@@ -24,7 +24,14 @@ class DotGenerator:
         elif node_type == "function" or node_type == "method":
             shape = "ellipse"
             fillcolor = "#FFD700" # Gold
-        
+        elif node_type.startswith("var:") or node_type.startswith("decorator:") or node_type.startswith("exception_at_line:") or node_type.startswith("try_block_at_line:") or node_type.startswith("return_value_at_line:"):
+            shape = "note"
+            fillcolor = "#FFC0CB" # Pink for auxiliary nodes
+            label = node_id.split(":", 1)[1] # Show only the name part
+        elif node_type == "external_service":
+            shape = "cylinder"
+            fillcolor = "#FFB6C1" # LightPink for external services
+
         # Add docstring if available
         docstring = node_data.get("docstring")
         if docstring:
@@ -51,6 +58,27 @@ class DotGenerator:
         elif edge_type == "INHERITS":
             color = "purple"
             style = "solid"
+        elif edge_type == "READS_VAR":
+            color = "orange"
+            style = "solid"
+        elif edge_type == "WRITES_VAR":
+            color = "red"
+            style = "solid"
+        elif edge_type == "THROWS_EXCEPTION":
+            color = "darkred"
+            style = "dashed"
+        elif edge_type == "HANDLES_EXCEPTION":
+            color = "darkgreen"
+            style = "dashed"
+        elif edge_type == "HAS_DECORATOR":
+            color = "brown"
+            style = "dotted"
+        elif edge_type == "RETURNS_VALUE":
+            color = "darkblue"
+            style = "solid"
+        elif edge_type == "USES_SERVICE":
+            color = "magenta"
+            style = "bold"
 
         self.dot_string += f"  \"{source_id}\" -> \"{target_id}\" [label=\"{label}\", color=\"{color}\", style={style}];\n"
 

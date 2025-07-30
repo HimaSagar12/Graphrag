@@ -53,6 +53,13 @@ After running the `main.py` script, the system will build the code graph and the
 *   `callers of main`
 *   `details of greet`
 *   `called by main`
+*   `readers of <variable_name>`
+*   `writers of <variable_name>`
+*   `throwers`
+*   `handlers`
+*   `decorated by <decorator_name>`
+*   `returners`
+*   `uses <service_name>` (e.g., `uses snowflake`)
 
 The system will respond with retrieved information from the graph. It will also show you the `retrieved_context` that would typically be sent to an LLM for further processing.
 
@@ -77,4 +84,4 @@ To generate a visual representation of the code's flow and dependencies:
 
 ## Codebase Example
 
-The project includes a small example Python codebase in the `codebase_example/` directory (`example_module.py`) that the system will parse and analyze by default. You can modify this file or add more Python files to the `codebase_example/` directory to test the system with different code structures.
+The project includes small example Python codebases in the `codebase_example/` directory (`example_module.py`, `snowflake_example.py`) that the system will parse and analyze by default. You can modify these files or add more Python files to the `codebase_example/` directory to test the system with different code structures.
