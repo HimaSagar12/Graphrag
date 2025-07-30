@@ -2,6 +2,7 @@ import os
 from ..parser.python_parser import PythonCodeParser
 from ..graph.graph_builder import GraphBuilder
 from ..query_engine.query_engine import QueryEngine
+from ..graph.dot_generator import DotGenerator
 
 CODEBASE_PATH = "/data/data/com.termux/files/home/graph_rag_code_understanding/codebase_example"
 
@@ -24,15 +25,26 @@ def main():
     graph_builder = GraphBuilder()
     code_graph = graph_builder.build_graph(all_parsed_data)
     query_engine = QueryEngine(code_graph)
+    dot_generator = DotGenerator()
     print(f"Graph built with {len(code_graph.nodes)} nodes and {len(code_graph.edges)} edges.")
 
     print("\nAsk questions about the codebase (e.g., 'functions in example_module.py', 'callers of main', 'details of greet'):")
+    print("Type 'generate dot' to create a DOT file for visualization.")
     print("Type 'exit' to quit.")
 
     while True:
         query = input("> ").strip().lower()
         if query == "exit":
             break
+        elif query == "generate dot":
+            dot_string = dot_generator.generate_dot(code_graph)
+            dot_file_path = os.path.join(os.getcwd(), "code_flow.dot")
+            with open(dot_file_path, "w") as f:
+                f.write(dot_string)
+            print(f"DOT file generated at: {dot_file_path}")
+            print("To visualize, install Graphviz (e.g., `sudo apt-get install graphviz` or `brew install graphviz`) and run:")
+            print(f"  dot -Tpng {dot_file_path} -o code_flow.png")
+            continue
 
         response = "I couldn't understand your query. Try something like: 'functions in <file_name>', 'callers of <function_name>', 'details of <node_name>'."
         retrieved_context = ""

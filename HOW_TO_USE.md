@@ -11,6 +11,7 @@ This project demonstrates a basic GraphRAG (Graph-based Retrieval Augmented Gene
 Before you begin, ensure you have the following installed on your system:
 
 *   **Python 3.8+** and `pip`
+*   **Graphviz** (for visualizing the code flow graph). You can download it from [graphviz.org/download/](https://graphviz.org/download/) or install via your system's package manager (e.g., `sudo apt-get install graphviz` on Debian/Ubuntu, `brew install graphviz` on macOS).
 
 ## Setup Instructions
 
@@ -56,6 +57,23 @@ After running the `main.py` script, the system will build the code graph and the
 The system will respond with retrieved information from the graph. It will also show you the `retrieved_context` that would typically be sent to an LLM for further processing.
 
 To exit the application, type `exit` and press Enter.
+
+## Generating Code Flow Visualizations (DOT Graph)
+
+To generate a visual representation of the code's flow and dependencies:
+
+1.  **Run the CLI application** as described above.
+2.  At the prompt, type:
+    ```
+    generate dot
+    ```
+    This will create a file named `code_flow.dot` in the root of your project directory.
+
+3.  **Render the DOT file to an image** using Graphviz. Open your terminal in the project's root directory and run:
+    ```bash
+    dot -Tpng code_flow.dot -o code_flow.png
+    ```
+    This command will generate a PNG image (`code_flow.png`) showing the code's structure and call relationships. You can change `-Tpng` to other formats like `-Tsvg` for SVG output.
 
 ## Codebase Example
 
