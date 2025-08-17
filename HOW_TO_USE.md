@@ -4,7 +4,7 @@ This document provides instructions on how to set up and run the local GraphRAG 
 
 ## Project Overview
 
-This project demonstrates a basic GraphRAG (Graph-based Retrieval Augmented Generation) system for code understanding. It parses Python code, builds an in-memory graph using NetworkX, and allows you to ask natural language-like questions about the codebase structure and relationships. The system then retrieves relevant context from the graph, which can be used to augment an LLM (like Groq) for generating answers.
+This project demonstrates a basic GraphRAG (Graph-based Retrieval Augmented Generation) system for code understanding. It parses Python code, builds an in-memory graph using NetworkX, and allows you to ask natural language-like questions about the codebase structure and relationships. The system then retrieves relevant context from the graph, which can be used to augment an LLM for generating answers.
 
 ## Prerequisites
 
@@ -12,6 +12,7 @@ Before you begin, ensure you have the following installed on your system:
 
 *   **Python 3.8+** and `pip`
 *   **Graphviz** (for visualizing the code flow graph). You can download it from [graphviz.org/download/](https://graphviz.org/download/) or install via your system's package manager (e.g., `sudo apt-get install graphviz` on Debian/Ubuntu, `brew install graphviz` on macOS).
+*   **In-house `horizon` library:** This project uses an in-house library called `horizon` to interact with the LLM. Please ensure that this library is installed in your environment.
 
 ## Setup Instructions
 
@@ -27,14 +28,6 @@ Before you begin, ensure you have the following installed on your system:
     Install the required Python packages using `pip`:
     ```bash
     pip install -r requirements.txt
-    ```
-
-3.  **(Optional) Configure Groq API Key:**
-
-    If you plan to integrate with Groq, open the `src/cli/main.py` file and replace the placeholder with your actual Groq API Key:
-    ```python
-    # src/cli/main.py
-    GROQ_API_KEY = "YOUR_GROQ_API_KEY_HERE" # Replace this with your actual key
     ```
 
 ## Running the Project
@@ -63,22 +56,18 @@ The Streamlit UI is the recommended way to interact with this project. It provid
     -   You can download the graph as a standard HTML file using the "Download Graph as HTML" button.
     -   You can also download the graph as an interactive mind map using the "Download as Mark Map" button.
 
-### Generate Function Comments with Groq
+### Generate Function Comments
 
-The Streamlit UI also includes a feature to automatically generate comments for your functions using the Groq API.
+The Streamlit UI also includes a feature to automatically generate comments for your functions using your in-house LLM.
 
-1.  **Enter your Groq API Key:**
-
-    In the "Generate Function Comments with Groq" section, enter your Groq API key in the text field.
-
-2.  **Generate Comments:**
+1.  **Generate Comments:**
 
     Click the "Generate Comments" button. The application will then:
     -   Read the functions from your uploaded code.
-    -   Use the Groq API to generate a comment for each function.
+    -   Use the `HorizonLLMClient` to generate a comment for each function.
     -   Display the original code and the code with the new comments side-by-side for you to review.
 
-3.  **Download Modified Files:**
+2.  **Download Modified Files:**
 
     If you are satisfied with the generated comments, you can download the modified files by clicking the "Download <file_name> with comments" button for each file.
 
