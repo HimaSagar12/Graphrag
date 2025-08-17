@@ -103,13 +103,13 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {
+              .then(function(element) {{ 
                 document.getElementById('graph').appendChild(element);
-              })
-              .catch(error => {
+              }})
+              .catch(error => {{ 
                 viz = new Viz();
                 console.error(error);
-              });
+              }});
           </script>
         </body>
         </html>
@@ -133,14 +133,14 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {
+            ((getMarkmap, getOptions, root, jsonOptions) => {{ 
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
                 (getOptions || markmap.deriveOptions)(jsonOptions),
                 JSON.parse('{markmap_json}')
               );
-            })(() => window.markmap, null, null, null);
+            }})(() => window.markmap, null, null, null);
           </script>
         </body>
         </html>
