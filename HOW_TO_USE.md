@@ -56,7 +56,8 @@ The Streamlit UI is the recommended way to interact with this project. It provid
 
 2.  **Using the App:**
 
-    -   The app will automatically analyze the code in the `codebase_example` directory and display the code graph.
+    -   Click on the "Browse files" button to upload one or more Python files from your local system.
+    -   Once the files are uploaded, the app will automatically analyze the code and display the code graph.
     -   You can enter your questions about the code in the text box and click "Submit Query".
     -   The results of your query will be displayed below the input box.
     -   You can download the graph as an HTML file using the "Download Graph as HTML" button.
