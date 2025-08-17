@@ -4,6 +4,7 @@ import sys
 import tempfile
 import pydot
 import json
+import base64
 from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
@@ -103,23 +104,21 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{ 
+              .then(function(element) {{{{
                 document.getElementById('graph').appendChild(element);
-              }})
-              .catch(error => {{ 
+              }}}})
+              .catch(error => {{{{
                 viz = new Viz();
                 console.error(error);
-              }});
+              }}}});
           </script>
         </body>
         </html>
         """
-        st.download_button(
-            label="Download Graph as HTML",
-            data=html_template,
-            file_name="graph.html",
-            mime="text/html",
-        )
+        html_b64 = base64.b64encode(html_template.encode()).decode()
+        href = f'<a href="data:text/html;base64,{html_b64}" download="graph.html">Download Graph as HTML</a>'
+        st.markdown(href, unsafe_allow_html=True)
+
 
         markmap_json = convert_dot_to_markmap_json(dot_string)
         markmap_html_template = f"""
@@ -133,25 +132,22 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
                 (getOptions || markmap.deriveOptions)(jsonOptions),
                 JSON.parse('{markmap_json}')
               );
-            }})(() => window.markmap, null, null, null);
+            }}}})(() => window.markmap, null, null, null);
           </script>
         </body>
         </html>
         """
+        markmap_b64 = base64.b64encode(markmap_html_template.encode()).decode()
+        href = f'<a href="data:text/html;base64,{markmap_b64}" download="markmap.html">Download as Mark Map</a>'
+        st.markdown(href, unsafe_allow_html=True)
 
-        st.download_button(
-            label="Download as Mark Map",
-            data=markmap_html_template,
-            file_name="markmap.html",
-            mime="text/html",
-        )
 
         st.header("Query Your Codebase")
         query = st.text_input("Enter your query:").strip().lower()
