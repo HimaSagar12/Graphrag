@@ -5,6 +5,7 @@ import tempfile
 import pydot
 import json
 import base64
+import streamlit.components.v1 as components
 from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
@@ -105,10 +106,10 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{{{ 
+              .then(function(element) {{ {{ 
                 document.getElementById('graph').appendChild(element);
-              }}}}) 
-              .catch(error => {{{{ 
+              }} }})
+              .catch(error => {{ {{ 
                 viz = new Viz();
                 console.error(error);
               }}}});
@@ -120,8 +121,34 @@ def main():
         href = f'<a href="data:text/html;base64,{html_b64}" download="graph.html">Download Graph as HTML</a>'
         st.markdown(href, unsafe_allow_html=True)
 
-
+        st.header("Mark Map Visualization")
         markmap_json = convert_graph_to_markmap_json(code_graph)
+        markmap_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Markmap</title>
+          <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
+        </head>
+        <body>
+          <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
+          <script>
+            ((getMarkmap, getOptions, root, jsonOptions) => {{ {{ 
+              const markmap = getMarkmap();
+              window.mm = markmap.Markmap.create(
+                "svg#mindmap",
+                (getOptions || markmap.deriveOptions)(jsonOptions),
+                {markmap_json}
+              );
+            }}}})(() => window.markmap, null, null, null);
+          </script>
+        </body>
+        </html>
+        """
+        components.html(markmap_html, height=600)
+
+
         markmap_html_template = f"""
         <!DOCTYPE html>
         <html>
@@ -133,12 +160,12 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{{{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{ {{ 
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
                 (getOptions || markmap.deriveOptions)(jsonOptions),
-                JSON.parse('{markmap_json}')
+                {markmap_json}
               );
             }}}})(() => window.markmap, null, null, null);
           </script>
@@ -248,7 +275,7 @@ def main():
                         response = f"No nodes found returning values."
                 elif "uses" in query:
                     service_name = query.split("uses")[-1].strip()
-                    users = query_engine.find_nodes_using_service(service_name)
+                    users = query_engine.find__using_service(service_name)
                     if users:
                         response = f"Nodes using service '{service_name}':\n"
                         for user in users:
