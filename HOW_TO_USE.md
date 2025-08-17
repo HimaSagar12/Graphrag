@@ -39,31 +39,56 @@ Before you begin, ensure you have the following installed on your system:
 
 ## Running the Project
 
-Once the setup is complete, you can run the command-line interface (CLI) application:
+This project has two main interfaces: a command-line interface (CLI) and a Streamlit web UI. The Streamlit UI provides all the functionality of the CLI in a more interactive way.
 
-```bash
-python src/cli/main.py
-```
+### Running the Streamlit Web UI (Recommended)
 
-## Interacting with the CLI
+The Streamlit UI is the recommended way to interact with this project. It provides a visual representation of the code graph and allows you to query the codebase using natural language.
 
-After running the `main.py` script, the system will build the code graph and then prompt you to ask questions. You can type queries like:
+1.  **Run the Streamlit app:**
 
-*   `functions in example_module.py`
-*   `callers of main`
-*   `details of greet`
-*   `called by main`
-*   `readers of <variable_name>`
-*   `writers of <variable_name>`
-*   `throwers`
-*   `handlers`
-*   `decorated by <decorator_name>`
-*   `returners`
-*   `uses <service_name>` (e.g., `uses snowflake`)
+    To start the web application, run the following command in your terminal:
+    ```bash
+    streamlit run app.py
+    ```
 
-The system will respond with retrieved information from the graph. It will also show you the `retrieved_context` that would typically be sent to an LLM for further processing.
+    This will open a new tab in your web browser with the application.
 
-To exit the application, type `exit` and press Enter.
+2.  **Using the App:**
+
+    -   The app will automatically analyze the code in the `codebase_example` directory and display the code graph.
+    -   You can enter your questions about the code in the text box and click "Submit Query".
+    -   The results of your query will be displayed below the input box.
+    -   You can download the graph as an HTML file using the "Download Graph as HTML" button.
+
+### Running the Command-Line Interface (CLI)
+
+The CLI provides a way to interact with the query engine from your terminal.
+
+1.  **Run the CLI application:**
+    ```bash
+    python src/cli/main.py
+    ```
+
+2.  **Interacting with the CLI:**
+
+    After running the `main.py` script, the system will build the code graph and then prompt you to ask questions. You can type queries like:
+
+    *   `functions in example_module.py`
+    *   `callers of main`
+    *   `details of greet`
+    *   `called by main`
+    *   `readers of <variable_name>`
+    *   `writers of <variable_name>`
+    *   `throwers`
+    *   `handlers`
+    *   `decorated by <decorator_name>`
+    *   `returners`
+    *   `uses <service_name>` (e.g., `uses snowflake`)
+
+    The system will respond with retrieved information from the graph. It will also show you the `retrieved_context` that would typically be sent to an LLM for further processing.
+
+    To exit the application, type `exit` and press Enter.
 
 ## Generating Code Flow Visualizations (DOT Graph)
 
@@ -85,29 +110,3 @@ To generate a visual representation of the code's flow and dependencies:
 ## Codebase Example
 
 The project includes small example Python codebases in the `codebase_example/` directory (`example_module.py`, `snowflake_example.py`) that the system will parse and analyze by default. You can modify these files or add more Python files to the `codebase_example/` directory to test the system with different code structures.
-
-## Running the Streamlit Web UI
-
-This project also includes a Streamlit web interface for visualizing the local codebase.
-
-1.  **Install dependencies:**
-
-    Make sure you have installed all the required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-2.  **Run the Streamlit app:**
-
-    To start the web application, run the following command in your terminal:
-    ```bash
-    streamlit run app.py
-    ```
-
-    This will open a new tab in your web browser with the application.
-
-3.  **Using the App:**
-
-    -   Click the "Generate Graph from Local Code" button.
-    -   The app will analyze the code in the `codebase_example` directory and display the code graph.
-    -   You can then download the graph as an HTML file using the "Download HTML" button.
