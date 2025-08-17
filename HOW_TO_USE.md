@@ -60,7 +60,8 @@ The Streamlit UI is the recommended way to interact with this project. It provid
     -   Once the files are uploaded, the app will automatically analyze the code and display the code graph.
     -   You can enter your questions about the code in the text box and click "Submit Query".
     -   The results of your query will be displayed below the input box.
-    -   You can download the graph as an HTML file using the "Download Graph as HTML" button.
+    -   You can download the graph as a standard HTML file using the "Download Graph as HTML" button.
+    -   You can also download the graph as an interactive mind map using the "Download as Mark Map" button.
 
 ### Running the Command-Line Interface (CLI)
 

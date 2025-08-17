@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import sys
 import tempfile
+import pydot
+import json
 from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
@@ -27,6 +29,51 @@ def load_graph_data(uploaded_files):
     graph_builder = GraphBuilder()
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
+
+def convert_dot_to_markmap_json(dot_string):
+    graphs = pydot.graph_from_dot_data(dot_string)
+    if not graphs:
+        return json.dumps({"content": "Empty Graph", "children": []})
+    graph = graphs[0]
+    
+    nodes_data = {node.get_name().strip('"'): {"content": node.get_name().strip('"'), "children": []} for node in graph.get_nodes()}
+    
+    destinations = set()
+    for edge in graph.get_edges():
+        source_name = edge.get_source().strip('"')
+        dest_name = edge.get_destination().strip('"')
+        destinations.add(dest_name)
+
+    adjacency_list = {node: [] for node in nodes_data}
+    for edge in graph.get_edges():
+        source_name = edge.get_source().strip('"')
+        dest_name = edge.get_destination().strip('"')
+        if source_name in adjacency_list and dest_name in adjacency_list:
+            adjacency_list[source_name].append(dest_name)
+
+    def build_tree(node_name, visited):
+        if node_name in visited:
+            return None
+        visited.add(node_name)
+        
+        node = {"content": node_name, "children": []}
+        for child_name in adjacency_list.get(node_name, []):
+            child_node = build_tree(child_name, visited)
+            if child_node:
+                node["children"].append(child_node)
+        return node
+
+    root_node_names = set(nodes_data.keys()) - destinations
+    
+    if not root_node_names and nodes_data:
+        root_node_names = [next(iter(nodes_data.keys()))]
+
+    root_children = []
+    visited_nodes = set()
+    for root_name in root_node_names:
+        root_children.append(build_tree(root_name, visited_nodes))
+
+    return json.dumps({"content": "Code Graph", "children": root_children})
 
 def main():
     st.title("Code Visualizer and Query Engine")
@@ -56,13 +103,13 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{
+              .then(function(element) {
                 document.getElementById('graph').appendChild(element);
-              }})
-              .catch(error => {{
+              })
+              .catch(error => {
                 viz = new Viz();
                 console.error(error);
-              }});
+              });
           </script>
         </body>
         </html>
@@ -71,6 +118,38 @@ def main():
             label="Download Graph as HTML",
             data=html_template,
             file_name="graph.html",
+            mime="text/html",
+        )
+
+        markmap_json = convert_dot_to_markmap_json(dot_string)
+        markmap_html_template = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Markmap</title>
+          <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
+        </head>
+        <body>
+          <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
+          <script>
+            ((getMarkmap, getOptions, root, jsonOptions) => {
+              const markmap = getMarkmap();
+              window.mm = markmap.Markmap.create(
+                "svg#mindmap",
+                (getOptions || markmap.deriveOptions)(jsonOptions),
+                JSON.parse('{markmap_json}')
+              );
+            })(() => window.markmap, null, null, null);
+          </script>
+        </body>
+        </html>
+        """
+
+        st.download_button(
+            label="Download as Mark Map",
+            data=markmap_html_template,
+            file_name="markmap.html",
             mime="text/html",
         )
 
