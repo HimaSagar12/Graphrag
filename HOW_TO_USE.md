@@ -85,3 +85,30 @@ To generate a visual representation of the code's flow and dependencies:
 ## Codebase Example
 
 The project includes small example Python codebases in the `codebase_example/` directory (`example_module.py`, `snowflake_example.py`) that the system will parse and analyze by default. You can modify these files or add more Python files to the `codebase_example/` directory to test the system with different code structures.
+
+## Running the Streamlit Web UI
+
+This project also includes a Streamlit web interface for visualizing code from Git repositories.
+
+1.  **Install dependencies:**
+
+    Make sure you have installed all the required packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+2.  **Run the Streamlit app:**
+
+    To start the web application, run the following command in your terminal:
+    ```bash
+    streamlit run app.py
+    ```
+
+    This will open a new tab in your web browser with the application.
+
+3.  **Using the App:**
+
+    -   Enter the URL of a Git repository into the text field.
+    -   Click the "Generate Graph" button.
+    -   The app will clone the repository, analyze the code, and display the code graph.
+    -   You can then download the graph as an HTML file using the "Download HTML" button.
