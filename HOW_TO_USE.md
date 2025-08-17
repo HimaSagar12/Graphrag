@@ -67,9 +67,13 @@ The Streamlit UI also includes a feature to automatically generate comments for 
     -   Use the `HorizonLLMClient` to generate a comment for each function.
     -   Display the original code and the code with the new comments side-by-side for you to review.
 
-2.  **Download Modified Files:**
+2.  **Apply Comments and Update Visualizations:**
 
-    If you are satisfied with the generated comments, you can download the modified files by clicking the "Download <file_name> with comments" button for each file.
+    If you are satisfied with the generated comments, click the "Apply Comments and Update Visualizations" button. This will update the code with the new comments and regenerate the code graph and mark map visualizations.
+
+3.  **Download Modified Files:**
+
+    After applying the comments, you can download all the modified files as a single zip archive by clicking the "Download All Modified Files as ZIP" button.
 
 ### Running the Command-Line Interface (CLI)
 

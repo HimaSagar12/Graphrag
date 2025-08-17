@@ -7,6 +7,8 @@ import json
 import base64
 import streamlit.components.v1 as components
 import ast
+import zipfile
+from io import BytesIO
 from horizon import HorizonLLMClient
 from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
@@ -17,13 +19,13 @@ from src.graph.dot_generator import DotGenerator
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @st.cache_data
-def load_graph_data(uploaded_files):
+def load_graph_data(file_contents):
     all_parsed_data = {"nodes": [], "edges": []}
     with tempfile.TemporaryDirectory() as tmpdir:
-        for uploaded_file in uploaded_files:
-            file_path = os.path.join(tmpdir, uploaded_file.name)
-            with open(file_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
+        for file_name, content in file_contents.items():
+            file_path = os.path.join(tmpdir, file_name)
+            with open(file_path, "w") as f:
+                f.write(content)
             
             parser = PythonCodeParser(file_path)
             parsed_data = parser.parse()
@@ -83,10 +85,17 @@ def convert_graph_to_markmap_json(code_graph):
 def main():
     st.title("Code Visualizer and Query Engine")
 
+    if "code_contents" not in st.session_state:
+        st.session_state.code_contents = {}
+
     uploaded_files = st.file_uploader("Upload Python files", accept_multiple_files=True, type="py")
 
     if uploaded_files:
-        code_graph = load_graph_data(uploaded_files)
+        if not st.session_state.code_contents:
+            for uploaded_file in uploaded_files:
+                st.session_state.code_contents[uploaded_file.name] = uploaded_file.getvalue().decode("utf-8")
+
+        code_graph = load_graph_data(st.session_state.code_contents)
         query_engine = QueryEngine(code_graph)
         dot_generator = DotGenerator()
 
@@ -108,13 +117,13 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{ {{ 
+              .then(function(element) {{{{{{ 
                 document.getElementById('graph').appendChild(element);
-              }} }})
-              .catch(error => {{ {{ 
+              }}}}})
+              .catch(error => {{{{{{ 
                 viz = new Viz();
                 console.error(error);
-              }}}});
+              }}}}});
           </script>
         </body>
         </html>
@@ -136,7 +145,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{ {{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{{{ 
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
@@ -162,7 +171,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{ {{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{{{ 
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
@@ -295,51 +304,53 @@ def main():
                 client = HorizonLLMClient()
                 st.session_state.modified_files = {}
                 
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    for uploaded_file in uploaded_files:
-                        file_path = os.path.join(tmpdir, uploaded_file.name)
-                        with open(file_path, "wb") as f:
-                            f.write(uploaded_file.getbuffer())
-                        
-                        with open(file_path, "r") as f:
-                            original_code = f.read()
-                        
-                        tree = ast.parse(original_code)
-                        modified_code = list(original_code.splitlines())
+                for file_name, original_code in st.session_state.code_contents.items():
+                    tree = ast.parse(original_code)
+                    modified_code = list(original_code.splitlines())
 
-                        for node in ast.walk(tree):
-                            if isinstance(node, ast.FunctionDef):
-                                function_code = ast.get_source_segment(original_code, node)
-                                
-                                response = client.get_chat_response(
-                                    user_msg=f"Explain what the following Python function does:\n\n```python\n{function_code}\n```"
-                                )
-                                comment = response["model_answer"]
-                                
-                                # Add comment to the top of the function
-                                comment = f'"""\n{comment}\n"""'
-                                function_def_line = node.lineno - 1
-                                indentation = " " * node.col_offset
-                                modified_code.insert(function_def_line, f"{indentation}{comment}")
+                    for node in ast.walk(tree):
+                        if isinstance(node, ast.FunctionDef):
+                            function_code = ast.get_source_segment(original_code, node)
+                            
+                            response = client.get_chat_response(
+                                user_msg=f"Explain what the following Python function does:\n\n```python\n{function_code}\n```"
+                            )
+                            comment = response["model_answer"]
+                            
+                            # Add comment to the top of the function
+                            comment = f'"""\n{comment}\n"""'
+                            function_def_line = node.lineno - 1
+                            indentation = " " * node.col_offset
+                            modified_code.insert(function_def_line, f"{indentation}{comment}")
 
-                        modified_code_str = "\n".join(modified_code)
-                        st.session_state.modified_files[uploaded_file.name] = modified_code_str
-                        
-                        st.subheader(f"Proposed changes for {uploaded_file.name}:")
-                        st.text_area("Original Code", original_code, height=300)
-                        st.text_area("Code with Comments", modified_code_str, height=300)
+                    modified_code_str = "\n".join(modified_code)
+                    st.session_state.modified_files[file_name] = modified_code_str
+                    
+                    st.subheader(f"Proposed changes for {file_name}:")
+                    st.text_area("Original Code", original_code, height=300)
+                    st.text_area("Code with Comments", modified_code_str, height=300)
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
 
-        if "modified_files" in st.session_state:
-            for file_name, modified_code in st.session_state.modified_files.items():
-                st.download_button(
-                    label=f"Download {file_name} with comments",
-                    data=modified_code,
-                    file_name=file_name,
-                    mime="text/plain",
-                )
+        if "modified_files" in st.session_state and st.session_state.modified_files:
+            if st.button("Apply Comments and Update Visualizations"):
+                st.session_state.code_contents = st.session_state.modified_files
+                st.session_state.modified_files = {}
+                st.experimental_rerun()
+
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                for file_name, modified_code in st.session_state.modified_files.items():
+                    zip_file.writestr(file_name, modified_code)
+            
+            st.download_button(
+                label="Download All Modified Files as ZIP",
+                data=zip_buffer.getvalue(),
+                file_name="commented_code.zip",
+                mime="application/zip",
+            )
+
 
 if __name__ == "__main__":
     main()
