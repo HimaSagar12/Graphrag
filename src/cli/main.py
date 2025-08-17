@@ -1,8 +1,10 @@
 import os
-from ..parser.python_parser import PythonCodeParser
-from ..graph.graph_builder import GraphBuilder
-from ..query_engine.query_engine import QueryEngine
-from ..graph.dot_generator import DotGenerator
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from src.parser.python_parser import PythonCodeParser
+from src.graph.graph_builder import GraphBuilder
+from src.query_engine.query_engine import QueryEngine
+from src.graph.dot_generator import DotGenerator
 
 CODEBASE_PATH = "/data/data/com.termux/files/home/graph_rag_code_understanding/codebase_example"
 
@@ -158,7 +160,7 @@ def main():
                     response += f"- {user['name']} (type: {user['type']})\n"
                 retrieved_context = str(users)
             else:
-                response = f"No nodes found using service '{service_name}'."
+                response = f"No nodes found using service '{service_name}'.' # Corrected the trailing quote here
 
         print(response)
         if retrieved_context:
@@ -166,3 +168,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
