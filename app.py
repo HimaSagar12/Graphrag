@@ -117,9 +117,9 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{{{
+              .then(function(element) {{{{ 
                 document.getElementById('graph').appendChild(element);
-              }}}})
+              }}}}) 
               .catch(error => {{{{
                 viz = new Viz();
                 console.error(error);
@@ -308,10 +308,9 @@ def main():
                 
                 for file_name, original_code in st.session_state.code_contents.items():
                     tree = ast.parse(original_code)
-                    modified_code = list(original_code.splitlines())
-
-                    for node in ast.walk(tree):
-                        if isinstance(node, ast.FunctionDef):
+                    
+                    class DocstringAdder(ast.NodeTransformer):
+                        def visit_FunctionDef(self, node):
                             function_code = ast.get_source_segment(original_code, node)
                             
                             response = client.get_chat_response(
@@ -319,18 +318,30 @@ def main():
                             )
                             comment = response["model_answer"]
                             
-                            # Add comment to the top of the function
-                            comment = f'"""\n{comment}\n"""'
-                            function_def_line = node.lineno - 1
-                            indentation = " " * node.col_offset
-                            modified_code.insert(function_def_line, f"{indentation}{comment}")
+                            # Create a new docstring node
+                            docstring = ast.Expr(value=ast.Constant(value=comment))
+                            
+                            # If the function already has a docstring, replace it
+                            if (
+                                node.body
+                                and isinstance(node.body[0], ast.Expr)
+                                and isinstance(node.body[0].value, ast.Constant)
+                            ):
+                                node.body[0] = docstring
+                            else:
+                                # If there is no docstring, add one
+                                node.body.insert(0, docstring)
+                            
+                            return node
 
-                    modified_code_str = "\n".join(modified_code)
-                    st.session_state.modified_files[file_name] = modified_code_str
+                    new_tree = DocstringAdder().visit(tree)
+                    modified_code = ast.unparse(new_tree)
+                    
+                    st.session_state.modified_files[file_name] = modified_code
                     
                     st.subheader(f"Proposed changes for {file_name}:")
                     st.text_area("Original Code", original_code, height=300)
-                    st.text_area("Code with Comments", modified_code_str, height=300)
+                    st.text_area("Code with Comments", modified_code, height=300)
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
