@@ -339,7 +339,7 @@ def main():
             if st.button("Apply Comments and Update Visualizations"):
                 st.session_state.code_contents = st.session_state.modified_files
                 st.session_state.modified_files = {}
-                st.experimental_rerun()
+                st.rerun()
 
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
