@@ -88,7 +88,7 @@ The project includes small example Python codebases in the `codebase_example/` d
 
 ## Running the Streamlit Web UI
 
-This project also includes a Streamlit web interface for visualizing code from Git repositories.
+This project also includes a Streamlit web interface for visualizing the local codebase.
 
 1.  **Install dependencies:**
 
@@ -108,7 +108,6 @@ This project also includes a Streamlit web interface for visualizing code from G
 
 3.  **Using the App:**
 
-    -   Enter the URL of a Git repository into the text field.
-    -   Click the "Generate Graph" button.
-    -   The app will clone the repository, analyze the code, and display the code graph.
+    -   Click the "Generate Graph from Local Code" button.
+    -   The app will analyze the code in the `codebase_example` directory and display the code graph.
     -   You can then download the graph as an HTML file using the "Download HTML" button.
