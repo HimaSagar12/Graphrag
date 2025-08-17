@@ -42,9 +42,34 @@ def main():
         dot_string = dot_generator.generate_dot(code_graph)
         st.graphviz_chart(dot_string)
         
+        html_template = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Graph Visualization</title>
+          <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+        </head>
+        <body>
+          <div id="graph"></div>
+          <script>
+            var dot = `{dot_string}`;
+            var viz = new Viz();
+            viz.renderSVGElement(dot)
+              .then(function(element) {{
+                document.getElementById('graph').appendChild(element);
+              }})
+              .catch(error => {{
+                viz = new Viz();
+                console.error(error);
+              }});
+          </script>
+        </body>
+        </html>
+        """
         st.download_button(
             label="Download Graph as HTML",
-            data=f"<html><body><pre>{dot_string}</pre></body></html>",
+            data=html_template,
             file_name="graph.html",
             mime="text/html",
         )
