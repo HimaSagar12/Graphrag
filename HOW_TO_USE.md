@@ -57,11 +57,30 @@ The Streamlit UI is the recommended way to interact with this project. It provid
 2.  **Using the App:**
 
     -   Click on the "Browse files" button to upload one or more Python files from your local system.
-    -   Once the files are uploaded, the app will automatically analyze the code and display the code graph.
+    -   Once the files are uploaded, the app will automatically analyze the code and display the code graph and a mark map.
     -   You can enter your questions about the code in the text box and click "Submit Query".
     -   The results of your query will be displayed below the input box.
     -   You can download the graph as a standard HTML file using the "Download Graph as HTML" button.
     -   You can also download the graph as an interactive mind map using the "Download as Mark Map" button.
+
+### Generate Function Comments with Groq
+
+The Streamlit UI also includes a feature to automatically generate comments for your functions using the Groq API.
+
+1.  **Enter your Groq API Key:**
+
+    In the "Generate Function Comments with Groq" section, enter your Groq API key in the text field.
+
+2.  **Generate Comments:**
+
+    Click the "Generate Comments" button. The application will then:
+    -   Read the functions from your uploaded code.
+    -   Use the Groq API to generate a comment for each function.
+    -   Display the original code and the code with the new comments side-by-side for you to review.
+
+3.  **Download Modified Files:**
+
+    If you are satisfied with the generated comments, you can download the modified files by clicking the "Download <file_name> with comments" button for each file.
 
 ### Running the Command-Line Interface (CLI)
 

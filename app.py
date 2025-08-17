@@ -6,6 +6,8 @@ import pydot
 import json
 import base64
 import streamlit.components.v1 as components
+import ast
+from groq import Groq
 from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
@@ -106,10 +108,10 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{ {{ 
+              .then(function(element) {{{{
                 document.getElementById('graph').appendChild(element);
-              }} }})
-              .catch(error => {{ {{ 
+              }}}})
+              .catch(error => {{{{
                 viz = new Viz();
                 console.error(error);
               }}}});
@@ -134,7 +136,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{ {{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
@@ -160,7 +162,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{ {{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
@@ -275,7 +277,7 @@ def main():
                         response = f"No nodes found returning values."
                 elif "uses" in query:
                     service_name = query.split("uses")[-1].strip()
-                    users = query_engine.find__using_service(service_name)
+                    users = query_engine.find_nodes_using_service(service_name)
                     if users:
                         response = f"Nodes using service '{service_name}':\n"
                         for user in users:
@@ -286,6 +288,68 @@ def main():
                 st.text_area("Query Result", response, height=200)
             else:
                 st.warning("Please enter a query.")
+
+        st.header("Generate Function Comments with Groq")
+        groq_api_key = st.text_input("Enter your Groq API Key:", type="password")
+        if st.button("Generate Comments"):
+            if groq_api_key:
+                try:
+                    client = Groq(api_key=groq_api_key)
+                    st.session_state.modified_files = {}
+                    
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        for uploaded_file in uploaded_files:
+                            file_path = os.path.join(tmpdir, uploaded_file.name)
+                            with open(file_path, "wb") as f:
+                                f.write(uploaded_file.getbuffer())
+                            
+                            with open(file_path, "r") as f:
+                                original_code = f.read()
+                            
+                            tree = ast.parse(original_code)
+                            modified_code = list(original_code.splitlines())
+
+                            for node in ast.walk(tree):
+                                if isinstance(node, ast.FunctionDef):
+                                    function_code = ast.get_source_segment(original_code, node)
+                                    
+                                    chat_completion = client.chat.completions.create(
+                                        messages=[
+                                            {
+                                                "role": "user",
+                                                "content": f"Explain what the following Python function does:\n\n```python\n{function_code}\n```",
+                                            }
+                                        ],
+                                        model="llama3-8b-8192",
+                                    )
+                                    comment = chat_completion.choices[0].message.content
+                                    
+                                    # Add comment to the top of the function
+                                    comment = f'"""\n{comment}\n"""'
+                                    function_def_line = node.lineno - 1
+                                    indentation = " " * node.col_offset
+                                    modified_code.insert(function_def_line, f"{indentation}{comment}")
+
+                            modified_code_str = "\n".join(modified_code)
+                            st.session_state.modified_files[uploaded_file.name] = modified_code_str
+                            
+                            st.subheader(f"Proposed changes for {uploaded_file.name}:")
+                            st.text_area("Original Code", original_code, height=300)
+                            st.text_area("Code with Comments", modified_code_str, height=300)
+
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
+            else:
+                st.warning("Please enter your Groq API Key.")
+
+        if "modified_files" in st.session_state:
+            for file_name, modified_code in st.session_state.modified_files.items():
+                st.download_button(
+                    label=f"Download {file_name} with comments",
+                    data=modified_code,
+                    file_name=file_name,
+                    mime="text/plain",
+                )
 
 if __name__ == "__main__":
     main()
