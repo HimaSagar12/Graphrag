@@ -31,50 +31,51 @@ def load_graph_data(uploaded_files):
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
 
-def convert_dot_to_markmap_json(dot_string):
-    graphs = pydot.graph_from_dot_data(dot_string)
-    if not graphs:
-        return json.dumps({"content": "Empty Graph", "children": []})
-    graph = graphs[0]
+def convert_graph_to_markmap_json(code_graph):
     
-    nodes_data = {node.get_name().strip('"'): {"content": node.get_name().strip('"'), "children": []} for node in graph.get_nodes()}
-    
-    destinations = set()
-    for edge in graph.get_edges():
-        source_name = edge.get_source().strip('"')
-        dest_name = edge.get_destination().strip('"')
-        destinations.add(dest_name)
-
-    adjacency_list = {node: [] for node in nodes_data}
-    for edge in graph.get_edges():
-        source_name = edge.get_source().strip('"')
-        dest_name = edge.get_destination().strip('"')
-        if source_name in adjacency_list and dest_name in adjacency_list:
-            adjacency_list[source_name].append(dest_name)
-
-    def build_tree(node_name, visited):
-        if node_name in visited:
+    def build_markmap_tree(node_id, graph, visited):
+        if node_id in visited:
             return None
-        visited.add(node_name)
-        
-        node = {"content": node_name, "children": []}
-        for child_name in adjacency_list.get(node_name, []):
-            child_node = build_tree(child_name, visited)
+        visited.add(node_id)
+
+        node_data = graph.nodes[node_id]
+        node_content = node_data.get("name", node_id)
+        markmap_node = {"content": node_content, "children": []}
+
+        # Group children by edge type
+        children_by_type = {}
+        for _, target_node_id, edge_data in graph.out_edges(node_id, data=True):
+            edge_type = edge_data.get("type", "UNKNOWN")
+            if edge_type not in children_by_type:
+                children_by_type[edge_type] = []
+            
+            child_node = build_markmap_tree(target_node_id, graph, visited)
             if child_node:
-                node["children"].append(child_node)
-        return node
+                children_by_type[edge_type].append(child_node)
 
-    root_node_names = set(nodes_data.keys()) - destinations
+        for edge_type, children in children_by_type.items():
+            if children:
+                markmap_node["children"].append({
+                    "content": edge_type,
+                    "children": children
+                })
+
+        return markmap_node
+
+    root_nodes = [node for node, in_degree in code_graph.in_degree() if in_degree == 0]
     
-    if not root_node_names and nodes_data:
-        root_node_names = [next(iter(nodes_data.keys()))]
+    if not root_nodes:
+        root_nodes = [next(iter(code_graph.nodes()))] if code_graph.nodes() else []
 
-    root_children = []
+    markmap_children = []
     visited_nodes = set()
-    for root_name in root_node_names:
-        root_children.append(build_tree(root_name, visited_nodes))
+    for root_node in root_nodes:
+        child = build_markmap_tree(root_node, code_graph, visited_nodes)
+        if child:
+            markmap_children.append(child)
 
-    return json.dumps({"content": "Code Graph", "children": root_children})
+    return json.dumps({"content": "Code Graph", "children": markmap_children})
+
 
 def main():
     st.title("Code Visualizer and Query Engine")
@@ -104,10 +105,10 @@ def main():
             var dot = `{dot_string}`;
             var viz = new Viz();
             viz.renderSVGElement(dot)
-              .then(function(element) {{{{
+              .then(function(element) {{{{ 
                 document.getElementById('graph').appendChild(element);
-              }}}})
-              .catch(error => {{{{
+              }}}}) 
+              .catch(error => {{{{ 
                 viz = new Viz();
                 console.error(error);
               }}}});
@@ -120,7 +121,7 @@ def main():
         st.markdown(href, unsafe_allow_html=True)
 
 
-        markmap_json = convert_dot_to_markmap_json(dot_string)
+        markmap_json = convert_graph_to_markmap_json(code_graph)
         markmap_html_template = f"""
         <!DOCTYPE html>
         <html>
@@ -132,7 +133,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 100vh;"></svg>
           <script>
-            ((getMarkmap, getOptions, root, jsonOptions) => {{{{
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{ 
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
