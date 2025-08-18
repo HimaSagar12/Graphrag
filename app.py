@@ -26,10 +26,13 @@ def load_graph_data(uploaded_files):
             with open(file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             
-            parser = PythonCodeParser(file_path)
-            parsed_data = parser.parse()
-            all_parsed_data["nodes"].extend(parsed_data["nodes"])
-            all_parsed_data["edges"].extend(parsed_data["edges"])
+            if file_path.endswith(".py"):
+                parser = PythonCodeParser(file_path)
+                parsed_data = parser.parse()
+                all_parsed_data["nodes"].extend(parsed_data["nodes"])
+                all_parsed_data["edges"].extend(parsed_data["edges"])
+            else:
+                all_parsed_data["nodes"].append({"id": uploaded_file.name, "type": "file", "name": uploaded_file.name})
     
     graph_builder = GraphBuilder()
     code_graph = graph_builder.build_graph(all_parsed_data)
