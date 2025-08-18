@@ -1,5 +1,6 @@
 import ast
 import os
+import yaml
 
 class PythonCodeParser:
     def __init__(self, file_path):
@@ -15,6 +16,31 @@ class PythonCodeParser:
             "line_number": 1,
             "docstring": None
         })
+
+    # def extract_nodes_from_ast(tree):
+    #     nodes = []
+    #     for node in ast.walk(tree):
+    #         if isinstance(node, ast.FunctionDef):
+    #             nodes.append({
+    #                 "type": "function",
+    #                 "name": node.name,
+    #                 "lineno": node.lineno
+    #             })
+    #     return {"nodes": nodes, "edges": []}
+
+    def extract_nodes_from_ast(tree):
+        nodes = []
+        for i, node in enumerate(ast.walk(tree)):
+            if isinstance(node, ast.FunctionDef):
+                nodes.append({
+                    "id": f"func_{i}",  # ✅ Unique ID
+                    "type": "function",
+                    "name": node.name,
+                    "lineno": node.lineno
+                })
+        return {"nodes": nodes, "edges": []}
+
+
 
     def _add_node(self, node_type, name, line_number, parent_id=None, docstring=None):
         node_id = f"{self.current_module_id}:{name}"
@@ -46,6 +72,16 @@ class PythonCodeParser:
     def parse(self):
         with open(self.file_path, "r") as f:
             tree = ast.parse(f.read(), filename=self.file_path)
+        
+        
+        with open(self.file_path, 'r', encoding='utf-8') as f:
+            if self.file_path.endswith('.py'):
+                return ast.parse(f.read(), filename=self.file_path)
+            elif self.file_path.endswith('.yaml') or self.file_path.endswith('.yml'):
+                return yaml.safe_load(f)
+            else:
+                raise ValueError("Unsupported file type for parsing.")
+
 
         # Add a global node for Snowflake connection if detected
         snowflake_detected = False

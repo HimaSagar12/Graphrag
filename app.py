@@ -15,26 +15,69 @@ from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
 from src.graph.dot_generator import DotGenerator
 
+
+import tempfile
+import ast
+import yaml
+# from src.parser.python_parser import extract_nodes_from_ast
+from src.graph.graph_builder import GraphBuilder  # Assuming this is where GraphBuilder is defined
+
+
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 @st.cache_data
+# def load_graph_data(file_contents):
+#     all_parsed_data = {"nodes": [], "edges": []}
+#     with tempfile.TemporaryDirectory() as tmpdir:
+#         for file_name, content in file_contents.items():
+#             file_path = os.path.join(tmpdir, file_name)
+#             with open(file_path, "w") as f:
+#                 f.write(content)
+            
+#             parser = PythonCodeParser(file_path)
+#             parsed_data = parser.parse()
+#             all_parsed_data["nodes"].extend(parsed_data["nodes"])
+#             all_parsed_data["edges"].extend(parsed_data["edges"])
+    
+#     graph_builder = GraphBuilder()
+#     code_graph = graph_builder.build_graph(all_parsed_data)
+#     return code_graph
 def load_graph_data(file_contents):
     all_parsed_data = {"nodes": [], "edges": []}
+
     with tempfile.TemporaryDirectory() as tmpdir:
         for file_name, content in file_contents.items():
             file_path = os.path.join(tmpdir, file_name)
-            with open(file_path, "w") as f:
+            with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
-            
-            parser = PythonCodeParser(file_path)
-            parsed_data = parser.parse()
-            all_parsed_data["nodes"].extend(parsed_data["nodes"])
-            all_parsed_data["edges"].extend(parsed_data["edges"])
-    
+
+            try:
+                if file_name.endswith(".py"):
+                    tree = ast.parse(content, filename=file_name)
+                    parsed_data = PythonCodeParser.extract_nodes_from_ast(tree)
+
+                elif file_name.endswith((".yaml", ".yml")):
+                    parsed_data = yaml.safe_load(content)
+                    if not isinstance(parsed_data, dict):
+                        parsed_data = {"nodes": [], "edges": []}
+                    parsed_data.setdefault("nodes", [])
+                    parsed_data.setdefault("edges", [])
+
+                else:
+                    # Unsupported file type
+                    parsed_data = {"nodes": [], "edges": []}
+
+                all_parsed_data["nodes"].extend(parsed_data["nodes"])
+                all_parsed_data["edges"].extend(parsed_data["edges"])
+
+            except Exception as e:
+                print(f"Error parsing {file_name}: {e}")
+
     graph_builder = GraphBuilder()
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
+
 
 def convert_graph_to_markmap_json(code_graph):
     
@@ -88,12 +131,22 @@ def main():
     if "code_contents" not in st.session_state:
         st.session_state.code_contents = {}
 
-    uploaded_files = st.file_uploader("Upload Python files", accept_multiple_files=True, type="py")
+    # uploaded_files = st.file_uploader("Upload Python files", accept_multiple_files=True, type="py")
+
+    uploaded_files = st.file_uploader("Upload any files", accept_multiple_files=True)
 
     if uploaded_files:
         if not st.session_state.code_contents:
+            # for uploaded_file in uploaded_files:
+            #     st.session_state.code_contents[uploaded_file.name] = uploaded_file.getvalue().decode("utf-8")
             for uploaded_file in uploaded_files:
-                st.session_state.code_contents[uploaded_file.name] = uploaded_file.getvalue().decode("utf-8")
+                try:
+                    content = uploaded_file.getvalue().decode("utf-8")
+                except UnicodeDecodeError:
+                    content = "This file is not a UTF-8 encoded text file."
+                
+                st.session_state.code_contents[uploaded_file.name] = content
+
 
         code_graph = load_graph_data(st.session_state.code_contents)
         query_engine = QueryEngine(code_graph)
