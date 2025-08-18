@@ -73,16 +73,6 @@ class PythonCodeParser:
         with open(self.file_path, "r") as f:
             tree = ast.parse(f.read(), filename=self.file_path)
         
-        
-        with open(self.file_path, 'r', encoding='utf-8') as f:
-            if self.file_path.endswith('.py'):
-                return ast.parse(f.read(), filename=self.file_path)
-            elif self.file_path.endswith('.yaml') or self.file_path.endswith('.yml'):
-                return yaml.safe_load(f)
-            else:
-                raise ValueError("Unsupported file type for parsing.")
-
-
         # Add a global node for Snowflake connection if detected
         snowflake_detected = False
         for node in ast.walk(tree):
