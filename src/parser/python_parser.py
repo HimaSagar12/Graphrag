@@ -28,16 +28,15 @@ class PythonCodeParser:
     #             })
     #     return {"nodes": nodes, "edges": []}
 
-    def extract_nodes_from_ast(tree, file_name):
+    def extract_nodes_from_ast(tree):
         nodes = []
         for i, node in enumerate(ast.walk(tree)):
             if isinstance(node, ast.FunctionDef):
                 nodes.append({
-                    "id": f"{file_name}:func_{i}",  # ✅ Unique ID
+                    "id": f"func_{i}",  # ✅ Unique ID
                     "type": "function",
                     "name": node.name,
-                    "lineno": node.lineno,
-                    "file": file_name
+                    "lineno": node.lineno
                 })
         return {"nodes": nodes, "edges": []}
 

@@ -41,17 +41,6 @@ def load_graph_data(file_contents):
                     tree = ast.parse(content, filename=file_name)
                     parsed_data = PythonCodeParser.extract_nodes_from_ast(tree)
 
-                elif file_name.endswith((".yaml", ".yml")):
-                    parsed_data = yaml.safe_load(content)
-                    if not isinstance(parsed_data, dict):
-                        parsed_data = {"nodes": [], "edges": []}
-                    parsed_data.setdefault("nodes", [])
-                    parsed_data.setdefault("edges", [])
-
-                else:
-                    # Unsupported file type
-                    parsed_data = {"nodes": [], "edges": []}
-
                 all_parsed_data["nodes"].extend(parsed_data["nodes"])
                 all_parsed_data["edges"].extend(parsed_data["edges"])
 
