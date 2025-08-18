@@ -24,18 +24,11 @@ class DotGenerator:
         elif node_type == "function" or node_type == "method":
             shape = "ellipse"
             fillcolor = "#FFD700" # Gold
-        elif node_type.startswith("var:") or node_type.startswith("decorator:") or node_type.startswith("exception_at_line:") or node_type.startswith("try_block_at_line:") or node_type.startswith("return_value_at_line:"):
-            shape = "note"
-            fillcolor = "#FFC0CB" # Pink for auxiliary nodes
-            label = node_id.split(":", 1)[1] # Show only the name part
-        elif node_type == "external_service":
-            shape = "cylinder"
-            fillcolor = "#FFB6C1" # LightPink for external services
-
+        
         # Add docstring if available
-        # docstring = node_data.get("docstring")
-        # if docstring:
-        #     label += f"\n({docstring.strip().splitlines()[0]})"; # First line of docstring
+        docstring = node_data.get("docstring")
+        if docstring:
+            label += f"\\n({docstring.strip().splitlines()[0]})"; # First line of docstring
 
         self.dot_string += f"  \"{node_id}\" [label=\"{label}\", shape={shape}, style={style}, fillcolor=\"{fillcolor}\"];\n"
 
@@ -58,27 +51,6 @@ class DotGenerator:
         elif edge_type == "INHERITS":
             color = "purple"
             style = "solid"
-        elif edge_type == "READS_VAR":
-            color = "orange"
-            style = "solid"
-        elif edge_type == "WRITES_VAR":
-            color = "red"
-            style = "solid"
-        elif edge_type == "THROWS_EXCEPTION":
-            color = "darkred"
-            style = "dashed"
-        elif edge_type == "HANDLES_EXCEPTION":
-            color = "darkgreen"
-            style = "dashed"
-        elif edge_type == "HAS_DECORATOR":
-            color = "brown"
-            style = "dotted"
-        elif edge_type == "RETURNS_VALUE":
-            color = "darkblue"
-            style = "solid"
-        elif edge_type == "USES_SERVICE":
-            color = "magenta"
-            style = "bold"
 
         self.dot_string += f"  \"{source_id}\" -> \"{target_id}\" [label=\"{label}\", color=\"{color}\", style={style}];\n"
 
@@ -93,23 +65,3 @@ class DotGenerator:
 
         self.dot_string += "}\n"
         return self.dot_string
-
-
-if __name__ == '__main__':
-    # Example usage:
-    G = nx.DiGraph()
-    G.add_node("module1", type="module", name="module1")
-    G.add_node("classA", type="class", name="ClassA")
-    G.add_node("func1", type="function", name="function_one")
-    G.add_node("func2", type="function", name="function_two")
-    G.add_node("var1", type="var:int", name="my_variable")
-
-    G.add_edge("module1", "classA", type="CONTAINS")
-    G.add_edge("classA", "func1", type="CONTAINS")
-    G.add_edge("classA", "func2", type="CONTAINS")
-    G.add_edge("func1", "func2", type="CALLS")
-    G.add_edge("func2", "var1", type="WRITES_VAR")
-
-    dot_gen = DotGenerator()
-    dot_output = dot_gen.generate_dot(G)
-    print(dot_output)
