@@ -10,6 +10,9 @@ from src.query_engine.query_engine import QueryEngine
 from src.graph.dot_generator import DotGenerator
 from horizon import HorizonLLMClient
 import ast
+import zipfile
+from io import BytesIO
+import re
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -78,9 +81,22 @@ def convert_dot_to_markmap_json(dot_string):
 def main():
     st.title("Code Visualizer and Query Engine")
 
-    uploaded_files = st.file_uploader("Upload Python files", accept_multiple_files=True, type="py")
+    if "code_contents" not in st.session_state:
+        st.session_state.code_contents = {}
+
+    uploaded_files = st.file_uploader("Upload any files", accept_multiple_files=True)
 
     if uploaded_files:
+        if not st.session_state.code_contents:
+            for uploaded_file in uploaded_files:
+                try:
+                    content = uploaded_file.getvalue().decode("utf-8")
+                except UnicodeDecodeError:
+                    content = "This file is not a UTF-8 encoded text file."
+                
+                st.session_state.code_contents[uploaded_file.name] = content
+
+
         code_graph = load_graph_data(uploaded_files)
         query_engine = QueryEngine(code_graph)
         dot_generator = DotGenerator()
@@ -124,25 +140,114 @@ def main():
         """
         components.html(markmap_html, height=600)
 
-        st.header("Query Your Codebase")
-        query = st.text_input("Enter your query:").strip().lower()
+        st.header("Look for Optimizing Opportunities")
 
-        if st.button("Submit Query"):
-            if query:
+        if st.button("Click to Analyze the Code"):
+            try:
                 client = HorizonLLMClient()
-                response = "I couldn't understand your query. Try something like: 'functions in <file_name>', 'callers of <function_name>', 'details of <node_name>'."
+                st.session_state.modified_files = {}
 
-                try:
-                    horizon_response = client.get_chat_response(
-                        user_msg=f"Analyze the following codebase and answer the query: '{query}' and the codebase is this {[f.name for f in uploaded_files]}"
-                    )
-                    response = horizon_response["model_answer"]
-                except Exception as e:
-                    response = f"An error occurred while querying: {e}"
+                for file_name, original_code in st.session_state.code_contents.items():
+                    response = client.get_chat_response(
+                        user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
+                    full_text = response["model_answer"]
 
-                st.text_area("Query Result", response, height=200)
-            else:
-                st.warning("Please enter a query.")
+                    # Extract only the Python code block from the response
+                    match = re.search(r"```python\n(.*?)```", full_text, re.DOTALL)
+                    optimized_code = match.group(1).strip() if match else original_code  # fallback to original if no match
+
+                    st.session_state.modified_files[file_name] = optimized_code
+
+                    st.subheader(f"AI Suggestions for {file_name}:")
+                    st.text_area("Full AI Response (Explanation + Code)", full_text, height=300)
+
+                    st.subheader(f"Optimized Code for {file_name}:")
+                    st.text_area("Optimized Code Only", optimized_code, height=300)
+
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+
+        # Apply and download section
+        if "modified_files" in st.session_state and st.session_state.modified_files:
+            if st.button("Apply Optimizations and Update Visualizations"):
+                st.session_state.code_contents = st.session_state.modified_files
+                st.session_state.modified_files = {}
+                st.rerun()
+
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                for file_name, modified_code in st.session_state.modified_files.items():
+                    zip_file.writestr(file_name, modified_code)
+
+            st.download_button(
+                label="Download All Optimized Files as ZIP",
+                data=zip_buffer.getvalue(),
+                file_name="optimized_code.zip",
+                mime="application/zip",
+            )
+
+        st.header("Generate Function Comments")
+        if st.button("Generate Comments"):
+            try:
+                client = HorizonLLMClient()
+                st.session_state.modified_files = {}
+                
+                for file_name, original_code in st.session_state.code_contents.items():
+                    tree = ast.parse(original_code)
+                    
+                    class DocstringAdder(ast.NodeTransformer):
+                        def visit_FunctionDef(self, node):
+                            function_code = ast.get_source_segment(original_code, node)
+                            
+                            response = client.get_chat_response(
+                                user_msg=f"Explain what the following Python function does:\n\n```python\n{function_code}\n```")
+                            comment = response["model_answer"]
+                            
+                            # Create a new docstring node
+                            docstring = ast.Expr(value=ast.Constant(value=comment))
+                            
+                            # If the function already has a docstring, replace it
+                            if (
+                                node.body
+                                and isinstance(node.body[0], ast.Expr)
+                                and isinstance(node.body[0].value, ast.Constant)
+                            ):
+                                node.body[0] = docstring
+                            else:
+                                # If there is no docstring, add one
+                                node.body.insert(0, docstring)
+                            
+                            return node
+
+                    new_tree = DocstringAdder().visit(tree)
+                    modified_code = ast.unparse(new_tree)
+                    
+                    st.session_state.modified_files[file_name] = modified_code
+                    
+                    st.subheader(f"Proposed changes for {file_name}:")
+                    st.text_area("Original Code", original_code, height=300)
+                    st.text_area("Code with Comments", modified_code, height=300)
+
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+
+        if "modified_files" in st.session_state and st.session_state.modified_files:
+            if st.button("Apply Comments and Update Visualizations"):
+                st.session_state.code_contents = st.session_state.modified_files
+                st.session_state.modified_files = {}
+                st.rerun()
+
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
+                for file_name, modified_code in st.session_state.modified_files.items():
+                    zip_file.writestr(file_name, modified_code)
+            
+            st.download_button(
+                label="Download All Modified Files as ZIP",
+                data=zip_buffer.getvalue(),
+                file_name="commented_code.zip",
+                mime="application/zip",
+            )
 
 if __name__ == "__main__":
     main()
