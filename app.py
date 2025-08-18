@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import sys
 import tempfile
+import json
+import streamlit.components.v1 as components
 from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
@@ -28,6 +30,49 @@ def load_graph_data(uploaded_files):
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
 
+def convert_dot_to_markmap_json(dot_string):
+    nodes = {}
+    edges = []
+
+    for line in dot_string.strip().split('\n'):
+        if '->' in line:
+            source, target_part = line.split('->')
+            source = source.strip().replace('"', '')
+            target, attrs = target_part.split('[')
+            target = target.strip().replace('"', '')
+            attrs = attrs.strip()[:-1]
+            label = ''
+            if 'label=' in attrs:
+                label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
+            edges.append({"source": source, "target": target, "label": label})
+        elif 'label=' in line:
+            node_id, attrs = line.split('[')
+            node_id = node_id.strip().replace('"', '')
+            label = ''
+            if 'label=' in attrs:
+                label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
+            nodes[node_id] = {"id": node_id, "label": label, "children": []}
+
+    for edge in edges:
+        source_node = nodes.get(edge["source"])
+        target_node = nodes.get(edge["target"])
+        if source_node and target_node:
+            source_node["children"].append(target_node)
+
+    root_nodes = [node for node in nodes.values() if not any(edge["target"] == node["id"] for edge in edges)]
+    
+    if not root_nodes and nodes:
+        root_nodes = [next(iter(nodes.values()))]
+
+    def build_markmap_tree(node):
+        return {
+            "content": node["label"],
+            "children": [build_markmap_tree(child) for child in node["children"]]
+        }
+
+    markmap_children = [build_markmap_tree(root) for root in root_nodes]
+    return json.dumps({"content": "Code Graph", "children": markmap_children})
+
 def main():
     st.title("Code Visualizer and Query Engine")
 
@@ -48,6 +93,34 @@ def main():
             file_name="graph.html",
             mime="text/html",
         )
+
+        st.header("Mark Map Visualization")
+        markmap_json = convert_dot_to_markmap_json(dot_string)
+        markmap_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Markmap</title>
+          <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
+        </head>
+        <body>
+          <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
+          <script>
+            const data = JSON.parse(`{markmap_json}`);
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{
+              const markmap = getMarkmap();
+              window.mm = markmap.Markmap.create(
+                "svg#mindmap",
+                (getOptions || markmap.deriveOptions)(jsonOptions),
+                data
+              );
+            }}}})(() => window.markmap, null, null, null);
+          </script>
+        </body>
+        </html>
+        """
+        components.html(markmap_html, height=600)
 
         st.header("Query Your Codebase")
         query = st.text_input("Enter your query:").strip().lower()
@@ -85,75 +158,6 @@ def main():
                             response += f"- {key}: {value}\n"
                     else:
                         response = f"Node '{node_name}' not found."
-                elif "called by" in query:
-                    function_name = query.split("called by")[-1].strip()
-                    called_functions = query_engine.find_functions_called_by(function_name)
-                    if called_functions:
-                        response = f"Functions called by {function_name}:\n"
-                        for func in called_functions:
-                            response += f"- {func['name']} (type: {func['type']})\n"
-                    else:
-                        response = f"No functions called by {function_name}."
-                elif "readers of" in query:
-                    var_name = query.split("readers of")[-1].strip()
-                    readers = query_engine.find_nodes_reading_var(var_name)
-                    if readers:
-                        response = f"Nodes reading variable '{var_name}':\n"
-                        for reader in readers:
-                            response += f"- {reader['name']} (type: {reader['type']})\n"
-                    else:
-                        response = f"No nodes found reading variable '{var_name}'."
-                elif "writers of" in query:
-                    var_name = query.split("writers of")[-1].strip()
-                    writers = query_engine.find_nodes_writing_var(var_name)
-                    if writers:
-                        response = f"Nodes writing to variable '{var_name}':\n"
-                        for writer in writers:
-                            response += f"- {writer['name']} (type: {writer['type']})\n"
-                    else:
-                        response = f"No nodes found writing to variable '{var_name}'."
-                elif "throwers" in query:
-                    throwers = query_engine.find_nodes_throwing_exception()
-                    if throwers:
-                        response = f"Nodes throwing exceptions:\n"
-                        for thrower in throwers:
-                            response += f"- {thrower['name']} (type: {thrower['type']})\n"
-                    else:
-                        response = f"No nodes found throwing exceptions."
-                elif "handlers" in query:
-                    handlers = query_engine.find_nodes_handling_exception()
-                    if handlers:
-                        response = f"Nodes handling exceptions:\n"
-                        for handler in handlers:
-                            response += f"- {handler['name']} (type: {handler['type']})\n"
-                    else:
-                        response = f"No nodes found handling exceptions."
-                elif "decorated by" in query:
-                    decorator_name = query.split("decorated by")[-1].strip()
-                    decorated_nodes = query_engine.find_nodes_with_decorator(decorator_name)
-                    if decorated_nodes:
-                        response = f"Nodes decorated by '{decorator_name}':\n"
-                        for node in decorated_nodes:
-                            response += f"- {node['name']} (type: {node['type']})\n"
-                    else:
-                        response = f"No nodes found decorated by '{decorator_name}'."
-                elif "returners" in query:
-                    returners = query_engine.find_nodes_returning_value()
-                    if returners:
-                        response = f"Nodes returning values:\n"
-                        for returner in returners:
-                            response += f"- {returner['name']} (type: {returner['type']})\n"
-                    else:
-                        response = f"No nodes found returning values."
-                elif "uses" in query:
-                    service_name = query.split("uses")[-1].strip()
-                    users = query_engine.find_nodes_using_service(service_name)
-                    if users:
-                        response = f"Nodes using service '{service_name}':\n"
-                        for user in users:
-                            response += f"- {user['name']} (type: {user['type']})\n"
-                    else:
-                        response = f"No nodes found using service '{service_name}'."
                 
                 st.text_area("Query Result", response, height=200)
             else:
