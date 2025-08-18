@@ -160,7 +160,7 @@ def main():
                     response += f"- {user['name']} (type: {user['type']})\n"
                 retrieved_context = str(users)
             else:
-                response = f"No nodes found using service '{service_name}'.' # Corrected the trailing quote here
+                response = f"No nodes found using service '{service_name}'." # Corrected the trailing quote here
 
         print(response)
         if retrieved_context:
