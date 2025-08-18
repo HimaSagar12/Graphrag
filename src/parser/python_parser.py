@@ -70,7 +70,7 @@ class PythonCodeParser:
             })
 
     def parse(self):
-        with open(self.file_path, "r") as f:
+        with open(self.file_path, "r", encoding="utf-8") as f:
             tree = ast.parse(f.read(), filename=self.file_path)
         
         # Add a global node for Snowflake connection if detected
