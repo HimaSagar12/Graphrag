@@ -3,73 +3,84 @@ import networkx as nx
 class DotGenerator:
     def __init__(self):
         self.dot_string = "digraph CodeFlow {\n"
-        self.dot_string += "  rankdir=TB;\n"  # Top to Bottom layout
-        self.dot_string += "  splines=ortho;\n"  # Use orthogonal lines for edges
-        self.dot_string += "  node [shape=box, style=rounded];\n"
+        self.dot_string += "  rankdir=LR;\n" # Left to Right layout
+        self.dot_string += "  node [shape=box];\n"
 
     def _add_node_to_dot(self, node_id, node_data):
         node_type = node_data.get("type", "unknown")
         name = node_data.get("name", node_id)
-        label = f"<b>{name}</b>\n<font point-size='10'>{node_type}</font>"
+        label = f"{name}"
         shape = "box"
-        color = "#3498db"  # Blue
-        style = "filled,rounded"
-        fillcolor = "#ecf0f1"  # Light Gray
+        color = "black"
+        style = "filled"
+        fillcolor = "white"
 
         if node_type == "module":
-            shape = "tab"
-            fillcolor = "#9b59b6"  # Purple
-            color = "#8e44ad"
+            shape = "folder"
+            fillcolor = "#ADD8E6" # LightBlue
         elif node_type == "class":
             shape = "component"
-            fillcolor = "#2ecc71"  # Green
-            color = "#27ae60"
+            fillcolor = "#90EE90" # LightGreen
         elif node_type == "function" or node_type == "method":
             shape = "ellipse"
-            fillcolor = "#f1c40f"  # Yellow
-            color = "#f39c12"
-        elif node_type.startswith("var:"):
+            fillcolor = "#FFD700" # Gold
+        elif node_type.startswith("var:") or node_type.startswith("decorator:") or node_type.startswith("exception_at_line:") or node_type.startswith("try_block_at_line:") or node_type.startswith("return_value_at_line:"):
             shape = "note"
-            fillcolor = "#e67e22"  # Orange
-            color = "#d35400"
-            label = f"<b>{node_id.split(':', 1)[1]}</b>\n<font point-size='10'>Variable</font>"
+            fillcolor = "#FFC0CB" # Pink for auxiliary nodes
+            label = node_id.split(":", 1)[1] # Show only the name part
         elif node_type == "external_service":
             shape = "cylinder"
-            fillcolor = "#e74c3c"  # Red
-            color = "#c0392b"
-        
-        docstring = node_data.get("docstring")
-        if docstring:
-            label += f"\n<font point-size='8'>{docstring.strip().splitlines()[0]}</font>"
+            fillcolor = "#FFB6C1" # LightPink for external services
 
-        self.dot_string += f'  "{node_id}" [label=<{label}>, shape={shape}, style="{style}", fillcolor="{fillcolor}", color="{color}"];\n'
+        # Add docstring if available
+        # docstring = node_data.get("docstring")
+        # if docstring:
+        #     label += f"\n({docstring.strip().splitlines()[0]})"; # First line of docstring
+
+        self.dot_string += f"  \"{node_id}\" [label=\"{label}\", shape={shape}, style={style}, fillcolor=\"{fillcolor}\"];\n"
 
     def _add_edge_to_dot(self, source_id, target_id, edge_data):
         edge_type = edge_data.get("type", "unknown")
         label = edge_type
-        color = "#7f8c8d"  # Gray
+        color = "black"
         style = "solid"
-        arrowhead = "normal"
 
         if edge_type == "CALLS":
-            color = "#2980b9"  # Dark Blue
+            color = "blue"
             style = "bold"
         elif edge_type == "IMPORTS":
-            color = "#16a085"  # Dark Green
+            color = "green"
             style = "dashed"
         elif edge_type == "CONTAINS":
-            color = "#bdc3c7"  # Light Gray
+            color = "gray"
             style = "dotted"
-            arrowhead = "none"
+            label = ""
         elif edge_type == "INHERITS":
-            color = "#8e44ad"  # Dark Purple
+            color = "purple"
             style = "solid"
-            arrowhead = "empty"
-        elif edge_type == "READS_VAR" or edge_type == "WRITES_VAR":
-            color = "#d35400"  # Dark Orange
+        elif edge_type == "READS_VAR":
+            color = "orange"
+            style = "solid"
+        elif edge_type == "WRITES_VAR":
+            color = "red"
+            style = "solid"
+        elif edge_type == "THROWS_EXCEPTION":
+            color = "darkred"
             style = "dashed"
-        
-        self.dot_string += f'  "{source_id}" -> "{target_id}" [label="{label}", color="{color}", style={style}, arrowhead={arrowhead}];\n'
+        elif edge_type == "HANDLES_EXCEPTION":
+            color = "darkgreen"
+            style = "dashed"
+        elif edge_type == "HAS_DECORATOR":
+            color = "brown"
+            style = "dotted"
+        elif edge_type == "RETURNS_VALUE":
+            color = "darkblue"
+            style = "solid"
+        elif edge_type == "USES_SERVICE":
+            color = "magenta"
+            style = "bold"
+
+        self.dot_string += f"  \"{source_id}\" -> \"{target_id}\" [label=\"{label}\", color=\"{color}\", style={style}];\n"
 
     def generate_dot(self, graph: nx.DiGraph) -> str:
         # Add nodes
@@ -83,3 +94,22 @@ class DotGenerator:
         self.dot_string += "}\n"
         return self.dot_string
 
+
+if __name__ == '__main__':
+    # Example usage:
+    G = nx.DiGraph()
+    G.add_node("module1", type="module", name="module1")
+    G.add_node("classA", type="class", name="ClassA")
+    G.add_node("func1", type="function", name="function_one")
+    G.add_node("func2", type="function", name="function_two")
+    G.add_node("var1", type="var:int", name="my_variable")
+
+    G.add_edge("module1", "classA", type="CONTAINS")
+    G.add_edge("classA", "func1", type="CONTAINS")
+    G.add_edge("classA", "func2", type="CONTAINS")
+    G.add_edge("func1", "func2", type="CALLS")
+    G.add_edge("func2", "var1", type="WRITES_VAR")
+
+    dot_gen = DotGenerator()
+    dot_output = dot_gen.generate_dot(G)
+    print(dot_output)
