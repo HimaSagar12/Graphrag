@@ -8,6 +8,8 @@ from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
 from src.graph.dot_generator import DotGenerator
+from horizon import HorizonLLMClient
+import ast
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -108,7 +110,7 @@ def main():
           <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
           <script>
             const data = JSON.parse(`{markmap_json}`);
-            ((getMarkmap, getOptions, root, jsonOptions) => {{{{
+            ((getMarkmap, getOptions, root, jsonOptions) => {{{{ 
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
@@ -127,38 +129,17 @@ def main():
 
         if st.button("Submit Query"):
             if query:
+                client = HorizonLLMClient()
                 response = "I couldn't understand your query. Try something like: 'functions in <file_name>', 'callers of <function_name>', 'details of <node_name>'."
-                
-                if "functions in" in query:
-                    file_name = query.split("functions in")[-1].strip().replace(".py", "") + ".py"
-                    functions = query_engine.find_functions_in_file(file_name)
-                    if functions:
-                        response = f"Functions in {file_name}:\n"
-                        for func in functions:
-                            response += f"- {func['name']} (line {func['line_number']})\n"
-                            if func['docstring']:
-                                response += f"  Docstring: {func['docstring']}\n"
-                    else:
-                        response = f"No functions found in {file_name} or file not parsed."
-                elif "callers of" in query:
-                    function_name = query.split("callers of")[-1].strip()
-                    callers = query_engine.find_callers_of_function(function_name)
-                    if callers:
-                        response = f"Callers of {function_name}:\n"
-                        for caller in callers:
-                            response += f"- {caller['name']} (type: {caller['type']})\n"
-                    else:
-                        response = f"No callers found for {function_name}."
-                elif "details of" in query:
-                    node_name = query.split("details of")[-1].strip()
-                    details = query_engine.get_node_details(node_name)
-                    if details:
-                        response = f"Details for {node_name}:\n"
-                        for key, value in details.items():
-                            response += f"- {key}: {value}\n"
-                    else:
-                        response = f"Node '{node_name}' not found."
-                
+
+                try:
+                    horizon_response = client.get_chat_response(
+                        user_msg=f"Analyze the following codebase and answer the query: '{query}' and the codebase is this {[f.name for f in uploaded_files]}"
+                    )
+                    response = horizon_response["model_answer"]
+                except Exception as e:
+                    response = f"An error occurred while querying: {e}"
+
                 st.text_area("Query Result", response, height=200)
             else:
                 st.warning("Please enter a query.")
