@@ -27,8 +27,8 @@ class DotGenerator:
         
         # Add docstring if available
         docstring = node_data.get("docstring")
-        if docstring:
-            label += f"\\n({docstring.strip().splitlines()[0]})"; # First line of docstring
+        if docstring and docstring.strip():
+            label += f"\n({docstring.strip().splitlines()[0]})"; # First line of docstring
 
         self.dot_string += f"  \"{node_id}\" [label=\"{label}\", shape={shape}, style={style}, fillcolor=\"{fillcolor}\"];\n"
 
