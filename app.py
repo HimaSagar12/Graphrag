@@ -8,6 +8,7 @@ from src.parser.python_parser import PythonCodeParser
 from src.graph.graph_builder import GraphBuilder
 from src.query_engine.query_engine import QueryEngine
 from src.graph.dot_generator import DotGenerator
+from src.diff_viewer.diff_viewer import CodeDiffViewer
 from horizon import HorizonLLMClient
 import ast
 import zipfile
@@ -167,10 +168,9 @@ def main():
                     st.session_state.modified_files[file_name] = optimized_code
 
                     st.subheader(f"AI Suggestions for {file_name}:")
-                    st.text_area("Full AI Response (Explanation + Code)", full_text, height=300)
-
-                    st.subheader(f"Optimized Code for {file_name}:")
-                    st.text_area("Optimized Code Only", optimized_code, height=300)
+                    if st.button(f"Show Diff for {file_name}", key=f"diff_opt_{file_name}"):
+                        diff_viewer = CodeDiffViewer(original_code, optimized_code)
+                        diff_viewer.show_diff()
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
@@ -233,8 +233,9 @@ def main():
                     st.session_state.modified_files[file_name] = modified_code
                     
                     st.subheader(f"Proposed changes for {file_name}:")
-                    st.text_area("Original Code", original_code, height=300)
-                    st.text_area("Code with Comments", modified_code, height=300)
+                    if st.button(f"Show Diff for {file_name}", key=f"diff_comment_{file_name}"):
+                        diff_viewer = CodeDiffViewer(original_code, modified_code)
+                        diff_viewer.show_diff()
 
             except Exception as e:
                 st.error(f"An error occurred: {e}")
