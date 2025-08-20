@@ -78,13 +78,17 @@ def convert_dot_to_markmap_json(dot_string):
     if not root_nodes and nodes:
         root_nodes = [next(iter(nodes.values()))]
 
-    def build_markmap_tree(node):
+    def build_markmap_tree(node, visited):
+        if node['id'] in visited:
+            return None
+        visited.add(node['id'])
+        children = [build_markmap_tree(child, visited.copy()) for child in node["children"]]
         return {
             "content": node["label"],
-            "children": [build_markmap_tree(child) for child in node["children"]]
+            "children": [child for child in children if child is not None]
         }
 
-    markmap_children = [build_markmap_tree(root) for root in root_nodes]
+    markmap_children = [build_markmap_tree(root, set()) for root in root_nodes]
     return json.dumps({"content": "Code Graph", "children": markmap_children})
 
 def main():
