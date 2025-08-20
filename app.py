@@ -128,33 +128,33 @@ def main():
             mime="text/html",
         )
 
-        st.header("Mark Map Visualization")
-        markmap_json = convert_dot_to_markmap_json(dot_string)
-        markmap_html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Markmap</title>
-          <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-          <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
-        </head>
-        <body>
-          <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
-          <script>
-            const data = JSON.parse(`{markmap_json}`);
-            ((getMarkmap, getOptions, root, jsonOptions) => {{
-              const markmap = getMarkmap();
-              window.mm = markmap.Markmap.create(
-                "svg#mindmap",
-                (getOptions || markmap.deriveOptions)(jsonOptions),
-                data
-              );
-            }})(() => window.markmap, null, null, null);
-          </script>
-        </body>
-        </html>
-        """)
-        components.html(markmap_html, height=600)
+        # st.header("Mark Map Visualization")
+        # markmap_json = convert_dot_to_markmap_json(dot_string)
+        # markmap_html = f"""
+        # <!DOCTYPE html>
+        # <html>
+        # <head>
+        #   <title>Markmap</title>
+        #   <script src=\"https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js\"></script>
+        #   <script src=\"https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js\"></script>
+        # </head>
+        # <body>
+        #   <svg id=\"mindmap\" style=\"width: 100%; height: 600px;\"></svg>
+        #   <script>
+        #     const data = JSON.parse(`{markmap_json}`);
+        #     ((getMarkmap, getOptions, root, jsonOptions) => {{
+        #       const markmap = getMarkmap();
+        #       window.mm = markmap.Markmap.create(
+        #         \"svg#mindmap\",
+        #         (getOptions || markmap.deriveOptions)(jsonOptions),
+        #         data
+        #       );
+        #     }})(() => window.markmap, null, null, null);
+        #   </script>
+        # </body>
+        # </html>
+        # """
+        # # components.html(markmap_html, height=600)
 
         # --- Optimization Section ---
         st.header("Look for Optimizing Opportunities")
