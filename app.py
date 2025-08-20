@@ -142,14 +142,14 @@ def main():
           <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
           <script>
             const data = JSON.parse(`{markmap_json}`);
-            ((getMarkmap, getOptions, root, jsonOptions) => {{{{ 
+            ((getMarkmap, getOptions, root, jsonOptions) => {{
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
                 "svg#mindmap",
                 (getOptions || markmap.deriveOptions)(jsonOptions),
                 data
               );
-            }}}})(() => window.markmap, null, null, null);
+            }})(() => window.markmap, null, null, null);
           </script>
         </body>
         </html>
