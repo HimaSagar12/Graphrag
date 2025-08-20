@@ -211,8 +211,8 @@ def main():
         if st.session_state.optimized_code:
             for file_name, optimized_code in st.session_state.optimized_code.items():
                 st.subheader(f"Optimized Code for {file_name}:")
-                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300)
-                st.text_area("Optimized Code", optimized_code, height=300)
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_opt_{file_name}")
+                st.text_area("Optimized Code", optimized_code, height=300, key=f"optimized_{file_name}")
                 if st.button(f"Show Diff for {file_name}", key=f"opt_{file_name}"):
                     st.session_state.show_diff_opt[file_name] = not st.session_state.show_diff_opt.get(file_name, False)
                 
@@ -263,8 +263,8 @@ def main():
         if st.session_state.commented_code:
             for file_name, commented_code in st.session_state.commented_code.items():
                 st.subheader(f"Proposed changes for {file_name}:")
-                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300)
-                st.text_area("Code with Comments", commented_code, height=300)
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_comment_{file_name}")
+                st.text_area("Code with Comments", commented_code, height=300, key=f"commented_{file_name}")
                 if st.button(f"Show Diff for {file_name}", key=f"comment_{file_name}"):
                     st.session_state.show_diff_comment[file_name] = not st.session_state.show_diff_comment.get(file_name, False)
 
