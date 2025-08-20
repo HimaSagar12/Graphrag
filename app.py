@@ -233,7 +233,13 @@ def main():
                 client = HorizonLLMClient()
                 st.session_state.commented_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
-                    tree = ast.parse(original_code)
+                    if not file_name.endswith(".py"):
+                        continue
+                    try:
+                        tree = ast.parse(original_code)
+                    except SyntaxError:
+                        st.warning(f"Could not parse {file_name}. Skipping.")
+                        continue
                     
                     class DocstringAdder(ast.NodeTransformer):
                         def visit_FunctionDef(self, node):
