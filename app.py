@@ -90,8 +90,17 @@ def convert_dot_to_markmap_json(dot_string):
 def main():
     st.title("Code Visualizer and Query Engine")
 
+    # Initialize session state variables
     if "code_contents" not in st.session_state:
         st.session_state.code_contents = {}
+    if "optimized_code" not in st.session_state:
+        st.session_state.optimized_code = {}
+    if "commented_code" not in st.session_state:
+        st.session_state.commented_code = {}
+    if "show_diff_opt" not in st.session_state:
+        st.session_state.show_diff_opt = {}
+    if "show_diff_comment" not in st.session_state:
+        st.session_state.show_diff_comment = {}
 
     uploaded_files = st.file_uploader("Upload any files", accept_multiple_files=True)
 
@@ -100,11 +109,9 @@ def main():
             for uploaded_file in uploaded_files:
                 try:
                     content = uploaded_file.getvalue().decode("utf-8")
+                    st.session_state.code_contents[uploaded_file.name] = content
                 except UnicodeDecodeError:
-                    content = "This file is not a UTF-8 encoded text file."
-                
-                st.session_state.code_contents[uploaded_file.name] = content
-
+                    st.session_state.code_contents[uploaded_file.name] = "This file is not a UTF-8 encoded text file."
 
         code_graph = load_graph_data(uploaded_files)
         query_engine = QueryEngine(code_graph)
@@ -146,60 +153,46 @@ def main():
           </script>
         </body>
         </html>
-        """
+        """)
         components.html(markmap_html, height=600)
 
+        # --- Optimization Section ---
         st.header("Look for Optimizing Opportunities")
-
         if st.button("Click to Analyze the Code"):
-            try:
+            with st.spinner("Analyzing code for optimizations..."):
                 client = HorizonLLMClient()
-                st.session_state.modified_files = {}
-
+                st.session_state.optimized_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     response = client.get_chat_response(
                         user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
                     full_text = response["model_answer"]
 
-                    # Extract only the Python code block from the response
                     match = re.search(r"```python\n(.*?)```", full_text, re.DOTALL)
-                    optimized_code = match.group(1).strip() if match else original_code  # fallback to original if no match
+                    optimized_code = match.group(1).strip() if match else original_code
+                    st.session_state.optimized_code[file_name] = optimized_code
 
-                    st.session_state.modified_files[file_name] = optimized_code
+        if st.session_state.optimized_code:
+            for file_name, optimized_code in st.session_state.optimized_code.items():
+                st.subheader(f"Optimized Code for {file_name}:")
+                if st.button(f"Show Diff for {file_name}", key=f"opt_{file_name}"):
+                    st.session_state.show_diff_opt[file_name] = not st.session_state.show_diff_opt.get(file_name, False)
+                
+                if st.session_state.show_diff_opt.get(file_name, False):
+                    original_code = st.session_state.code_contents[file_name]
+                    diff_viewer = CodeDiffViewer(original_code, optimized_code)
+                    diff_viewer.show_diff()
 
-                    st.subheader(f"AI Suggestions for {file_name}:")
-                    if st.button(f"Show Diff for {file_name}", key=f"diff_opt_{file_name}"):
-                        diff_viewer = CodeDiffViewer(original_code, optimized_code)
-                        diff_viewer.show_diff()
-
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
-
-        # Apply and download section
-        if "modified_files" in st.session_state and st.session_state.modified_files:
-            if st.button("Apply Optimizations and Update Visualizations"):
-                st.session_state.code_contents = st.session_state.modified_files
-                st.session_state.modified_files = {}
+            if st.button("Apply Optimizations"):
+                st.session_state.code_contents.update(st.session_state.optimized_code)
+                st.session_state.optimized_code = {}
                 st.rerun()
 
-            zip_buffer = BytesIO()
-            with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-                for file_name, modified_code in st.session_state.modified_files.items():
-                    zip_file.writestr(file_name, modified_code)
-
-            st.download_button(
-                label="Download All Optimized Files as ZIP",
-                data=zip_buffer.getvalue(),
-                file_name="optimized_code.zip",
-                mime="application/zip",
-            )
-
+        # --- Commenting Section ---
         st.header("Generate Function Comments")
         if st.button("Generate Comments"):
-            try:
+            with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.modified_files = {}
-                
+                st.session_state.commented_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     tree = ast.parse(original_code)
                     
@@ -211,10 +204,8 @@ def main():
                                 user_msg=f"Explain what the following Python function does:\n\n```python\n{function_code}\n```")
                             comment = response["model_answer"]
                             
-                            # Create a new docstring node
                             docstring = ast.Expr(value=ast.Constant(value=comment))
                             
-                            # If the function already has a docstring, replace it
                             if (
                                 node.body
                                 and isinstance(node.body[0], ast.Expr)
@@ -222,39 +213,45 @@ def main():
                             ):
                                 node.body[0] = docstring
                             else:
-                                # If there is no docstring, add one
                                 node.body.insert(0, docstring)
                             
                             return node
 
                     new_tree = DocstringAdder().visit(tree)
                     modified_code = ast.unparse(new_tree)
-                    
-                    st.session_state.modified_files[file_name] = modified_code
-                    
-                    st.subheader(f"Proposed changes for {file_name}:")
-                    if st.button(f"Show Diff for {file_name}", key=f"diff_comment_{file_name}"):
-                        diff_viewer = CodeDiffViewer(original_code, modified_code)
-                        diff_viewer.show_diff()
+                    st.session_state.commented_code[file_name] = modified_code
 
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+        if st.session_state.commented_code:
+            for file_name, commented_code in st.session_state.commented_code.items():
+                st.subheader(f"Proposed changes for {file_name}:")
+                if st.button(f"Show Diff for {file_name}", key=f"comment_{file_name}"):
+                    st.session_state.show_diff_comment[file_name] = not st.session_state.show_diff_comment.get(file_name, False)
 
-        if "modified_files" in st.session_state and st.session_state.modified_files:
-            if st.button("Apply Comments and Update Visualizations"):
-                st.session_state.code_contents = st.session_state.modified_files
-                st.session_state.modified_files = {}
+                if st.session_state.show_diff_comment.get(file_name, False):
+                    original_code = st.session_state.code_contents[file_name]
+                    diff_viewer = CodeDiffViewer(original_code, commented_code)
+                    diff_viewer.show_diff()
+
+            if st.button("Apply Comments"):
+                st.session_state.code_contents.update(st.session_state.commented_code)
+                st.session_state.commented_code = {}
                 st.rerun()
 
+        # --- Download Section ---
+        if st.session_state.optimized_code or st.session_state.commented_code:
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-                for file_name, modified_code in st.session_state.modified_files.items():
-                    zip_file.writestr(file_name, modified_code)
-            
+                if st.session_state.optimized_code:
+                    for file_name, modified_code in st.session_state.optimized_code.items():
+                        zip_file.writestr(file_name, modified_code)
+                if st.session_state.commented_code:
+                    for file_name, modified_code in st.session_state.commented_code.items():
+                        zip_file.writestr(file_name, modified_code)
+
             st.download_button(
                 label="Download All Modified Files as ZIP",
                 data=zip_buffer.getvalue(),
-                file_name="commented_code.zip",
+                file_name="modified_code.zip",
                 mime="application/zip",
             )
 
