@@ -128,33 +128,33 @@ def main():
             mime="text/html",
         )
 
-        # st.header("Mark Map Visualization")
-        # markmap_json = convert_dot_to_markmap_json(dot_string)
-        # markmap_html = f"""
-        # <!DOCTYPE html>
-        # <html>
-        # <head>
-        #   <title>Markmap</title>
-        #   <script src=\"https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js\"></script>
-        #   <script src=\"https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js\"></script>
-        # </head>
-        # <body>
-        #   <svg id=\"mindmap\" style=\"width: 100%; height: 600px;\"></svg>
-        #   <script>
-        #     const data = JSON.parse(`{markmap_json}`);
-        #     ((getMarkmap, getOptions, root, jsonOptions) => {{
-        #       const markmap = getMarkmap();
-        #       window.mm = markmap.Markmap.create(
-        #         \"svg#mindmap\",
-        #         (getOptions || markmap.deriveOptions)(jsonOptions),
-        #         data
-        #       );
-        #     }})(() => window.markmap, null, null, null);
-        #   </script>
-        # </body>
-        # </html>
-        # """
-        # # components.html(markmap_html, height=600)
+        st.header("Mark Map Visualization")
+        markmap_json = convert_dot_to_markmap_json(dot_string)
+        markmap_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Markmap</title>
+          <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
+        </head>
+        <body>
+          <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
+          <script>
+            const data = JSON.parse(`{markmap_json}`);
+            ((getMarkmap, getOptions, root, jsonOptions) => {{
+              const markmap = getMarkmap();
+              window.mm = markmap.Markmap.create(
+                "svg#mindmap",
+                (getOptions || markmap.deriveOptions)(jsonOptions),
+                data
+              );
+            }})(() => window.markmap, null, null, null);
+          </script>
+        </body>
+        </html>
+        """
+        components.html(markmap_html, height=600)
 
         # --- Optimization Section ---
         st.header("Look for Optimizing Opportunities")
@@ -167,13 +167,15 @@ def main():
                         user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
                     full_text = response["model_answer"]
 
-                    match = re.search(r"```python\n(.*?)```", full_text, re.DOTALL)
+                    match = re.search(r"```python\n(.*?)\n```", full_text, re.DOTALL)
                     optimized_code = match.group(1).strip() if match else original_code
                     st.session_state.optimized_code[file_name] = optimized_code
 
         if st.session_state.optimized_code:
             for file_name, optimized_code in st.session_state.optimized_code.items():
                 st.subheader(f"Optimized Code for {file_name}:")
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300)
+                st.text_area("Optimized Code", optimized_code, height=300)
                 if st.button(f"Show Diff for {file_name}", key=f"opt_{file_name}"):
                     st.session_state.show_diff_opt[file_name] = not st.session_state.show_diff_opt.get(file_name, False)
                 
@@ -192,7 +194,7 @@ def main():
         if st.button("Generate Comments"):
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.commented_code = {}
+                st.session_state.commented__code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     tree = ast.parse(original_code)
                     
@@ -224,6 +226,8 @@ def main():
         if st.session_state.commented_code:
             for file_name, commented_code in st.session_state.commented_code.items():
                 st.subheader(f"Proposed changes for {file_name}:")
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300)
+                st.text_area("Code with Comments", commented_code, height=300)
                 if st.button(f"Show Diff for {file_name}", key=f"comment_{file_name}"):
                     st.session_state.show_diff_comment[file_name] = not st.session_state.show_diff_comment.get(file_name, False)
 
