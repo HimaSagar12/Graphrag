@@ -154,10 +154,16 @@ class PythonCodeParser:
                         elif isinstance(item, ast.Name):
                             if isinstance(item.ctx, ast.Load):
                                 # Variable read
-                                self._add_edge(current_scope_id, f"var:{item.id}", "READS_VAR", item.lineno)
+                                var_id = f"var:{item.id}"
+                                if not any(n["id"] == var_id for n in self.nodes):
+                                    self.nodes.append({"id": var_id, "type": "variable", "name": item.id, "file_path": self.file_path, "line_number": item.lineno})
+                                self._add_edge(current_scope_id, var_id, "READS_VAR", item.lineno)
                             elif isinstance(item.ctx, ast.Store):
                                 # Variable write
-                                self._add_edge(current_scope_id, f"var:{item.id}", "WRITES_VAR", item.lineno)
+                                var_id = f"var:{item.id}"
+                                if not any(n["id"] == var_id for n in self.nodes):
+                                    self.nodes.append({"id": var_id, "type": "variable", "name": item.id, "file_path": self.file_path, "line_number": item.lineno})
+                                self._add_edge(current_scope_id, var_id, "WRITES_VAR", item.lineno)
                         elif isinstance(item, ast.Raise):
                             self._add_edge(current_scope_id, f"exception_at_line:{item.lineno}", "THROWS_EXCEPTION", item.lineno)
                         elif isinstance(item, ast.Try):

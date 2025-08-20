@@ -45,11 +45,16 @@ def load_graph_data(uploaded_files):
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
 
-def filter_graph_nodes(graph, ignored_types):
+def filter_graph(graph, ignored_node_types, ignored_edge_types):
     filtered_graph = graph.copy()
     for node, data in list(filtered_graph.nodes(data=True)):
-        if data.get("type") in ignored_types:
+        if data.get("type") in ignored_node_types:
             filtered_graph.remove_node(node)
+    
+    for u, v, data in list(filtered_graph.edges(data=True)):
+        if data.get("type") in ignored_edge_types:
+            filtered_graph.remove_edge(u, v)
+
     return filtered_graph
 
 def convert_dot_to_markmap_json(dot_string):
@@ -126,20 +131,19 @@ def main():
                     st.session_state.code_contents[uploaded_file.name] = "This file is not a UTF-8 encoded text file."
 
         st.sidebar.header("Graph Options")
-        ignored_types = []
+        ignored_node_types = []
+        ignored_edge_types = []
         if st.sidebar.checkbox("Ignore Variables"):
-            ignored_types.append("variable")
+            ignored_node_types.append("variable")
         if st.sidebar.checkbox("Ignore Imports"):
-            ignored_types.append("import")
+            ignored_edge_types.append("IMPORTS")
         if st.sidebar.checkbox("Ignore Functions"):
-            ignored_types.append("function")
+            ignored_node_types.append("function")
         if st.sidebar.checkbox("Ignore Classes"):
-            ignored_types.append("class")
-        if st.sidebar.checkbox("Ignore Methods"):
-            ignored_types.append("method")
+            ignored_node_types.append("class")
 
         code_graph = load_graph_data(uploaded_files)
-        filtered_graph = filter_graph_nodes(code_graph, ignored_types)
+        filtered_graph = filter_graph(code_graph, ignored_node_types, ignored_edge_types)
 
         query_engine = QueryEngine(filtered_graph)
         dot_generator = DotGenerator()
