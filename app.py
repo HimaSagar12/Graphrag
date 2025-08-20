@@ -14,6 +14,7 @@ import ast
 import zipfile
 from io import BytesIO
 import re
+import networkx as nx
 
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -43,6 +44,13 @@ def load_graph_data(uploaded_files):
     graph_builder = GraphBuilder()
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
+
+def filter_graph_nodes(graph, ignored_types):
+    filtered_graph = graph.copy()
+    for node, data in list(filtered_graph.nodes(data=True)):
+        if data.get("type") in ignored_types:
+            filtered_graph.remove_node(node)
+    return filtered_graph
 
 def convert_dot_to_markmap_json(dot_string):
     nodes = {}
@@ -117,12 +125,27 @@ def main():
                 except UnicodeDecodeError:
                     st.session_state.code_contents[uploaded_file.name] = "This file is not a UTF-8 encoded text file."
 
+        st.sidebar.header("Graph Options")
+        ignored_types = []
+        if st.sidebar.checkbox("Ignore Variables"):
+            ignored_types.append("variable")
+        if st.sidebar.checkbox("Ignore Imports"):
+            ignored_types.append("import")
+        if st.sidebar.checkbox("Ignore Functions"):
+            ignored_types.append("function")
+        if st.sidebar.checkbox("Ignore Classes"):
+            ignored_types.append("class")
+        if st.sidebar.checkbox("Ignore Methods"):
+            ignored_types.append("method")
+
         code_graph = load_graph_data(uploaded_files)
-        query_engine = QueryEngine(code_graph)
+        filtered_graph = filter_graph_nodes(code_graph, ignored_types)
+
+        query_engine = QueryEngine(filtered_graph)
         dot_generator = DotGenerator()
 
         st.header("Code Graph Visualization")
-        dot_string = dot_generator.generate_dot(code_graph)
+        dot_string = dot_generator.generate_dot(filtered_graph)
         st.graphviz_chart(dot_string)
         
         st.download_button(
@@ -159,6 +182,12 @@ def main():
         </html>
         """
         components.html(markmap_html, height=600)
+        st.download_button(
+            label="Download Markmap as HTML",
+            data=markmap_html,
+            file_name="markmap.html",
+            mime="text/html",
+        )
 
         # --- Optimization Section ---
         st.header("Look for Optimizing Opportunities")
@@ -198,7 +227,7 @@ def main():
         if st.button("Generate Comments"):
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.commented__code = {}
+                st.session_state.commented_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     tree = ast.parse(original_code)
                     
