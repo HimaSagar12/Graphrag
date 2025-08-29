@@ -120,6 +120,15 @@ def main():
         st.session_state.show_diff_comment = {}
 
     uploaded_files = st.file_uploader("Upload any files", accept_multiple_files=True)
+    uploaded_log_file = st.file_uploader("Upload a log file", accept_multiple_files=False)
+
+    if uploaded_log_file:
+        if st.button("Analyze Log File"):
+            log_contents = uploaded_log_file.getvalue().decode("utf-8")
+            problem, solution = analyze_log_file(log_contents)
+            st.header("Log Analysis Results")
+            st.error(f"Problem: {problem}")
+            st.success(f"Solution: {solution}")
 
     if uploaded_files:
         if not st.session_state.code_contents:
@@ -302,5 +311,44 @@ def main():
                 mime="application/zip",
             )
 
+def analyze_log_file(log_contents):
+    if "traceback" in log_contents.lower():
+        # Simple heuristic: find the last traceback and the lines following it
+        traceback_lines = []
+        in_traceback = False
+        for line in log_contents.splitlines():
+            if "traceback (most recent call last)" in line.lower():
+                traceback_lines = [line]
+                in_traceback = True
+            elif in_traceback:
+                traceback_lines.append(line)
+        
+        problem = "\n".join(traceback_lines)
+        
+        # Use a simple rule-based approach for solutions
+        if "filenotfounderror" in problem.lower():
+            solution = "The file mentioned in the traceback was not found. Please check the file path and make sure the file exists."
+        elif "importerror" in problem.lower():
+            solution = "An import failed. Please make sure the required library is installed. You might need to run 'pip install <library_name>'."
+        elif "typeerror" in problem.lower():
+            solution = "A type error occurred. This usually means you are trying to perform an operation on an object of the wrong type. Check the types of the variables in the traceback."
+        else:
+            solution = "A traceback was found, which indicates an error. Please review the traceback to understand the cause of the error."
+
+    else:
+        # If no traceback, look for common error keywords
+        if "error" in log_contents.lower():
+            problem = "The log file contains the word 'error', but no traceback was found. Look for lines containing 'error' to identify the problem."
+            solution = "Review the lines containing the word 'error' to understand the context of the problem."
+        elif "warning" in log_contents.lower():
+            problem = "The log file contains warnings. While not always critical, they might indicate potential issues."
+            solution = "Review the warnings in the log file to see if they are relevant to the problem you are facing."
+        else:
+            problem = "No traceback or error keywords found in the log file."
+            solution = "The log file does not seem to contain any obvious errors. The problem might be more subtle. A manual review of the log file is recommended."
+            
+    return problem, solution
+
 if __name__ == "__main__":
     main()
+
