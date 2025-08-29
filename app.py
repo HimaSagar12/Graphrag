@@ -107,6 +107,27 @@ def convert_dot_to_markmap_json(dot_string):
 def main():
     st.title("Code Visualizer and Query Engine")
 
+    # --- Log File Analysis Section ---
+    st.header("Log File Analysis")
+    uploaded_files = st.file_uploader("Upload your codebase (zip file or individual files)", accept_multiple_files=True)
+    uploaded_log_file = st.file_uploader("Upload a log file", accept_multiple_files=False)
+
+    if uploaded_log_file and uploaded_files:
+        if st.button("Analyze Log File"):
+            log_contents = uploaded_log_file.getvalue().decode("utf-8")
+            
+            # Create a temporary directory to store the uploaded codebase
+            with tempfile.TemporaryDirectory() as tmpdir:
+                for uploaded_file in uploaded_files:
+                    file_path = os.path.join(tmpdir, uploaded_file.name)
+                    with open(file_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+
+                problem, solution = analyze_log_file(log_contents, tmpdir)
+                st.header("Log Analysis Results")
+                st.error(f"Problem: {problem}")
+                st.success(f"Solution: {solution}")
+
     # Initialize session state variables
     if "code_contents" not in st.session_state:
         st.session_state.code_contents = {}
@@ -118,17 +139,6 @@ def main():
         st.session_state.show_diff_opt = {}
     if "show_diff_comment" not in st.session_state:
         st.session_state.show_diff_comment = {}
-
-    uploaded_files = st.file_uploader("Upload any files", accept_multiple_files=True)
-    uploaded_log_file = st.file_uploader("Upload a log file", accept_multiple_files=False)
-
-    if uploaded_log_file:
-        if st.button("Analyze Log File"):
-            log_contents = uploaded_log_file.getvalue().decode("utf-8")
-            problem, solution = analyze_log_file(log_contents)
-            st.header("Log Analysis Results")
-            st.error(f"Problem: {problem}")
-            st.success(f"Solution: {solution}")
 
     if uploaded_files:
         if not st.session_state.code_contents:
@@ -311,9 +321,8 @@ def main():
                 mime="application/zip",
             )
 
-def analyze_log_file(log_contents):
+def analyze_log_file(log_contents, codebase_path):
     if "traceback" in log_contents.lower():
-        # Simple heuristic: find the last traceback and the lines following it
         traceback_lines = []
         in_traceback = False
         for line in log_contents.splitlines():
@@ -322,21 +331,39 @@ def analyze_log_file(log_contents):
                 in_traceback = True
             elif in_traceback:
                 traceback_lines.append(line)
-        
-        problem = "\n".join(traceback_lines)
-        
-        # Use a simple rule-based approach for solutions
-        if "filenotfounderror" in problem.lower():
-            solution = "The file mentioned in the traceback was not found. Please check the file path and make sure the file exists."
-        elif "importerror" in problem.lower():
-            solution = "An import failed. Please make sure the required library is installed. You might need to run 'pip install <library_name>'."
-        elif "typeerror" in problem.lower():
-            solution = "A type error occurred. This usually means you are trying to perform an operation on an object of the wrong type. Check the types of the variables in the traceback."
-        else:
-            solution = "A traceback was found, which indicates an error. Please review the traceback to understand the cause of the error."
 
+        problem = "\n".join(traceback_lines)
+
+        # Extract file and line number from traceback
+        file_path_match = re.search(r'file \"(.*?)\", line', problem, re.IGNORECASE)
+        line_number_match = re.search(r'line (\d+)', problem, re.IGNORECASE)
+
+        if file_path_match and line_number_match:
+            file_path = file_path_match.group(1)
+            line_number = int(line_number_match.group(1))
+            
+            # Construct the full path to the file
+            full_file_path = os.path.join(codebase_path, file_path)
+
+            if os.path.exists(full_file_path):
+                with open(full_file_path, 'r') as f:
+                    code_lines = f.readlines()
+                
+                # Extract the relevant code snippet
+                start = max(0, line_number - 5)
+                end = min(len(code_lines), line_number + 5)
+                code_snippet = "".join(code_lines[start:end])
+
+                # Use HorizonLLMClient for analysis
+                client = HorizonLLMClient()
+                response = client.get_chat_response(
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution.")
+                solution = response["model_answer"]
+            else:
+                solution = "The file mentioned in the traceback was not found in the uploaded codebase."
+        else:
+            solution = "A traceback was found, but the file path and line number could not be extracted. A manual review is required."
     else:
-        # If no traceback, look for common error keywords
         if "error" in log_contents.lower():
             problem = "The log file contains the word 'error', but no traceback was found. Look for lines containing 'error' to identify the problem."
             solution = "Review the lines containing the word 'error' to understand the context of the problem."
