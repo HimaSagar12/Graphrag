@@ -342,14 +342,27 @@ def analyze_log_file(log_contents, codebase_path):
         line_number_match = re.search(r'line (\d+)', problem, re.IGNORECASE)
 
         if file_path_match and line_number_match:
-            file_path = file_path_match.group(1)
+            file_path_from_traceback = file_path_match.group(1)
             line_number = int(line_number_match.group(1))
             
-            # Construct the full path to the file
-            full_file_path = os.path.join(codebase_path, file_path)
+            # Find the file in the uploaded codebase
+            found_file_path = None
+            for root, dirs, files in os.walk(codebase_path):
+                if os.path.basename(file_path_from_traceback) in files:
+                    # A simple heuristic: if the end of the path matches, it's likely the correct file
+                    if root.endswith(os.path.dirname(file_path_from_traceback)):
+                        found_file_path = os.path.join(root, os.path.basename(file_path_from_traceback))
+                        break
+            
+            # If not found with the heuristic, just take the first match
+            if not found_file_path:
+                for root, dirs, files in os.walk(codebase_path):
+                    if os.path.basename(file_path_from_traceback) in files:
+                        found_file_path = os.path.join(root, os.path.basename(file_path_from_traceback))
+                        break
 
-            if os.path.exists(full_file_path):
-                with open(full_file_path, 'r') as f:
+            if found_file_path and os.path.exists(found_file_path):
+                with open(found_file_path, 'r') as f:
                     code_lines = f.readlines()
                 
                 # Extract the relevant code snippet
@@ -360,7 +373,7 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet from the file `{os.path.basename(found_file_path)}`:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
                 )
                 solution = response["model_answer"]
             else:
