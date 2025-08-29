@@ -109,16 +109,15 @@ def main():
 
     # --- Log File Analysis Section ---
     st.header("Log File Analysis")
-    uploaded_files = st.file_uploader("Upload your codebase (zip file or individual files)", accept_multiple_files=True)
-    uploaded_log_file = st.file_uploader("Upload a log file", accept_multiple_files=False)
+    uploaded_files_log = st.file_uploader("Upload your codebase (zip file or individual files) for log analysis", accept_multiple_files=True, key="log_codebase")
+    uploaded_log_file = st.file_uploader("Upload a log file", accept_multiple_files=False, key="log_file")
 
-    if uploaded_log_file and uploaded_files:
+    if uploaded_log_file and uploaded_files_log:
         if st.button("Analyze Log File"):
             log_contents = uploaded_log_file.getvalue().decode("utf-8")
             
-            # Create a temporary directory to store the uploaded codebase
             with tempfile.TemporaryDirectory() as tmpdir:
-                for uploaded_file in uploaded_files:
+                for uploaded_file in uploaded_files_log:
                     file_path = os.path.join(tmpdir, uploaded_file.name)
                     with open(file_path, "wb") as f:
                         f.write(uploaded_file.getbuffer())
@@ -128,21 +127,25 @@ def main():
                 st.error(f"Problem: {problem}")
                 st.success(f"Solution: {solution}")
 
-    # Initialize session state variables
-    if "code_contents" not in st.session_state:
-        st.session_state.code_contents = {}
-    if "optimized_code" not in st.session_state:
-        st.session_state.optimized_code = {}
-    if "commented_code" not in st.session_state:
-        st.session_state.commented_code = {}
-    if "show_diff_opt" not in st.session_state:
-        st.session_state.show_diff_opt = {}
-    if "show_diff_comment" not in st.session_state:
-        st.session_state.show_diff_comment = {}
+    # --- Code Visualization and other features ---
+    st.header("Code Visualization and Analysis")
+    uploaded_files_main = st.file_uploader("Upload any files for visualization and analysis", accept_multiple_files=True, key="main_codebase")
 
-    if uploaded_files:
+    if uploaded_files_main:
+        # Initialize session state variables
+        if "code_contents" not in st.session_state:
+            st.session_state.code_contents = {}
+        if "optimized_code" not in st.session_state:
+            st.session_state.optimized_code = {}
+        if "commented_code" not in st.session_state:
+            st.session_state.commented_code = {}
+        if "show_diff_opt" not in st.session_state:
+            st.session_state.show_diff_opt = {}
+        if "show_diff_comment" not in st.session_state:
+            st.session_state.show_diff_comment = {}
+
         if not st.session_state.code_contents:
-            for uploaded_file in uploaded_files:
+            for uploaded_file in uploaded_files_main:
                 try:
                     content = uploaded_file.getvalue().decode("utf-8")
                     st.session_state.code_contents[uploaded_file.name] = content
@@ -161,7 +164,7 @@ def main():
         if st.sidebar.checkbox("Ignore Classes"):
             ignored_node_types.append("class")
 
-        code_graph = load_graph_data(uploaded_files)
+        code_graph = load_graph_data(uploaded_files_main)
         filtered_graph = filter_graph(code_graph, ignored_node_types, ignored_edge_types)
 
         query_engine = QueryEngine(filtered_graph)
@@ -180,7 +183,7 @@ def main():
 
         st.header("Mark Map Visualization")
         markmap_json = convert_dot_to_markmap_json(dot_string)
-        markmap_html = f"""
+        markmap_html = f'''
         <!DOCTYPE html>
         <html>
         <head>
@@ -203,7 +206,7 @@ def main():
           </script>
         </body>
         </html>
-        """
+        '''
         components.html(markmap_html, height=600)
         st.download_button(
             label="Download Markmap as HTML",
@@ -357,7 +360,8 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution.")
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
+                )
                 solution = response["model_answer"]
             else:
                 solution = "The file mentioned in the traceback was not found in the uploaded codebase."
@@ -378,4 +382,3 @@ def analyze_log_file(log_contents, codebase_path):
 
 if __name__ == "__main__":
     main()
-
