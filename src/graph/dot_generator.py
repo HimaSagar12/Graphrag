@@ -31,7 +31,7 @@ class DotGenerator:
 
         docstring = node_data.get("docstring")
         if docstring and docstring.strip():
-            label += f"\n({docstring.strip().splitlines()[0]})")
+            label += f"\n({docstring.strip().splitlines()[0]})"
 
         self.dot_string += f'  "{node_id}" [label="{label}", shape={shape}, style={style}, fillcolor="{fillcolor}", type="{node_type}"];\n'
 
@@ -66,19 +66,21 @@ class DotGenerator:
             if node_data.get("type") == "module":
                 continue
             
-            module_name = node_id.split('.')[0]
+            module_name = node_id.split(".")[0]
             modules[module_name].append((node_id, node_data))
 
         for module_name, nodes in modules.items():
-            self.dot_string += f'  subgraph "cluster_{module_name}" {{\n'
-            self.dot_string += f'    label = "{module_name}";\n'
-            self.dot_string += '    style = "filled";\n'
-            self.dot_string += '    color = "lightgrey";\n'
+            self.dot_string += f'  subgraph "cluster_{module_name}" {{\n
+            self.dot_string += f'    label = "{module_name}";\n
+            self.dot_string += '    style = "filled";\n
+            self.dot_string += '    color = "lightgrey";\n
             
+
             for node_id, node_data in nodes:
                 self._add_node_to_dot(node_id, node_data)
             
-            self.dot_string += '  }\n'
+
+            self.dot_string += '  }}\n'
 
     def generate_dot(self, graph: nx.DiGraph, node_filter: list = None, edge_filter: list = None, cluster_modules: bool = False) -> str:
         self.dot_string = "digraph CodeFlow {\n"
