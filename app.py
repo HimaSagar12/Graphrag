@@ -22,8 +22,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 @st.cache_data
 def load_graph_data(uploaded_files):
     all_parsed_data = {"nodes": [], "edges": []}
+    ignored_extensions = [".ckpt", ".ipynb_checkpoints"]
     with tempfile.TemporaryDirectory() as tmpdir:
         for uploaded_file in uploaded_files:
+            if any(uploaded_file.name.endswith(ext) for ext in ignored_extensions):
+                continue
+
             file_path = os.path.join(tmpdir, uploaded_file.name)
             with open(file_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
@@ -45,8 +49,79 @@ def load_graph_data(uploaded_files):
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
 
+def generate_interactive_html(dot_string, node_types, edge_types):
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Interactive Code Graph</title>
+      <script src="https://d3js.org/d3.v5.min.js"></script>
+      <script src="https://unpkg.com/@hpcc-js/wasm@0.3.11/dist/index.min.js"></script>
+      <script src="https://unpkg.com/d3-graphviz@3.0.5/build/d3-graphviz.js"></script>
+      <style>
+        #graph-container {{
+          border: 1px solid black;
+          width: 100%;
+          height: 80vh;
+        }}
+        .filters {{
+          margin-bottom: 10px;
+        }}
+      </style>
+    </head>
+    <body>
+      <div class="filters">
+        <strong>Node Types:</strong>
+        {"".join(f'<label><input type="checkbox" class="node-filter" value="{nt}" checked> {nt}</label>' for nt in node_types)}
+        <br>
+        <strong>Edge Types:</strong>
+        {"".join(f'<label><input type="checkbox" class="edge-filter" value="{et}" checked> {et}</label>' for et in edge_types)}
+      </div>
+      <div id="graph-container"></div>
+
+      <script>
+        const dotString = `{dot_string}`;
+        const graphviz = d3.select("#graph-container").graphviz();
+
+        function renderGraph() {{
+          const nodeFilters = Array.from(document.querySelectorAll('.node-filter:checked')).map(el => el.value);
+          const edgeFilters = Array.from(document.querySelectorAll('.edge-filter:checked')).map(el => el.value);
+
+          const filteredDot = dotString.split('\n').filter(line => {{
+            if (line.includes('->')) {{
+              const match = line.match(/label=\"(.*?)\"/);
+              if (match) {{
+                return edgeFilters.includes(match[1]);
+              }}
+              return true;
+            }} else if (line.includes('shape')) {{
+                const match = line.match(/fillcolor=\"(.*?)\"/);
+                if(match){{
+                    const color = match[1];
+                    let node_type = 'unknown';
+                    if(color === '#ADD8E6') node_type = 'module';
+                    if(color === '#90EE90') node_type = 'class';
+                    if(color === '#FFD700') node_type = 'function';
+                    return nodeFilters.includes(node_type);
+                }}
+                return true;
+            }}
+            return true;
+          }}).join('\n');
+
+          graphviz.renderDot(filteredDot);
+        }}
+
+        d3.selectAll('.node-filter, .edge-filter').on('change', renderGraph);
+
+        renderGraph();
+      </script>
+    </body>
+    </html>
+    '''
+
 def convert_dot_to_markmap_json(dot_string):
-    nodes = {}
+    nodes = {{}}
     edges = []
 
     for line in dot_string.strip().split('\n'):
@@ -59,14 +134,14 @@ def convert_dot_to_markmap_json(dot_string):
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            edges.append({"source": source, "target": target, "label": label})
+            edges.append({{"source": source, "target": target, "label": label}})
         elif 'label=' in line:
             node_id, attrs = line.split('[')
             node_id = node_id.strip().replace('"', '')
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            nodes[node_id] = {"id": node_id, "label": label, "children": []}
+            nodes[node_id] = {{"id": node_id, "label": label, "children": []}}
 
     for edge in edges:
         source_node = nodes.get(edge["source"])
@@ -84,13 +159,13 @@ def convert_dot_to_markmap_json(dot_string):
             return None
         visited.add(node['id'])
         children = [build_markmap_tree(child, visited.copy()) for child in node["children"]]
-        return {
+        return {{
             "content": node["label"],
             "children": [child for child in children if child is not None]
-        }
+        }}
 
     markmap_children = [build_markmap_tree(root, set()) for root in root_nodes]
-    return json.dumps({"content": "Code Graph", "children": markmap_children})
+    return json.dumps({{"content": "Code Graph", "children": markmap_children}})
 
 def main():
     st.title("Code Visualizer and Query Engine")
@@ -122,15 +197,15 @@ def main():
     if uploaded_files_main:
         # Initialize session state variables
         if "code_contents" not in st.session_state:
-            st.session_state.code_contents = {}
+            st.session_state.code_contents = {{}}
         if "optimized_code" not in st.session_state:
-            st.session_state.optimized_code = {}
+            st.session_state.optimized_code = {{}}
         if "commented_code" not in st.session_state:
-            st.session_state.commented_code = {}
+            st.session_state.commented_code = {{}}
         if "show_diff_opt" not in st.session_state:
-            st.session_state.show_diff_opt = {}
+            st.session_state.show_diff_opt = {{}}
         if "show_diff_comment" not in st.session_state:
-            st.session_state.show_diff_comment = {}
+            st.session_state.show_diff_comment = {{}}
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -165,10 +240,11 @@ def main():
         dot_string = dot_generator.generate_dot(code_graph, node_filter=selected_node_types, edge_filter=selected_edge_types, cluster_modules=cluster_modules)
         st.graphviz_chart(dot_string)
         
+        interactive_html = generate_interactive_html(dot_string, selected_node_types, selected_edge_types)
         st.download_button(
-            label="Download Graph as HTML",
-            data=f"<html><body><pre>{dot_string}</pre></body></html>",
-            file_name="graph.html",
+            label="Download Graph as Interactive HTML",
+            data=interactive_html,
+            file_name="interactive_graph.html",
             mime="text/html",
         )
 
@@ -211,7 +287,7 @@ def main():
         if st.button("Click to Analyze the Code"):
             with st.spinner("Analyzing code for optimizations..."):
                 client = HorizonLLMClient()
-                st.session_state.optimized_code = {}
+                st.session_state.optimized_code = {{}}
                 for file_name, original_code in st.session_state.code_contents.items():
                     response = client.get_chat_response(
                         user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
@@ -236,7 +312,7 @@ def main():
 
             if st.button("Apply Optimizations"):
                 st.session_state.code_contents.update(st.session_state.optimized_code)
-                st.session_state.optimized_code = {}
+                st.session_state.optimized_code = {{}}
                 st.rerun()
 
         # --- Commenting Section ---
@@ -244,7 +320,7 @@ def main():
         if st.button("Generate Comments"):
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.commented_code = {}
+                st.session_state.commented_code = {{}}
                 for file_name, original_code in st.session_state.code_contents.items():
                     if not file_name.endswith(".py"):
                         continue
@@ -294,7 +370,7 @@ def main():
 
             if st.button("Apply Comments"):
                 st.session_state.code_contents.update(st.session_state.commented_code)
-                st.session_state.commented_code = {}
+                st.session_state.commented_code = {{}}
                 st.rerun()
 
         # --- Download Section ---
@@ -351,7 +427,8 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution.")
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
+                )
                 solution = response["model_answer"]
             else:
                 solution = "The file mentioned in the traceback was not found in the uploaded codebase."
