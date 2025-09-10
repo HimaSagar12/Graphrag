@@ -53,6 +53,9 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     # Properly escape the dot string for JavaScript
     js_dot_string = json.dumps(dot_string)
 
+    node_filters_html = ''.join(f'<label><input type="checkbox" class="node-filter" value="{nt}" checked> {nt}</label>' for nt in node_types)
+    edge_filters_html = ''.join(f'<label><input type="checkbox" class="edge-filter" value="{et}" checked> {et}</label>' for et in edge_types)
+
     return f'''
     <!DOCTYPE html>
     <html>
@@ -75,10 +78,10 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     <body>
       <div class="filters">
         <strong>Node Types:</strong>
-        {""..join(f'<label><input type="checkbox" class="node-filter" value="{nt}" checked> {nt}</label>' for nt in node_types)}
+        {node_filters_html}
         <br>
         <strong>Edge Types:</strong>
-        {""..join(f'<label><input type="checkbox" class="edge-filter" value="{et}" checked> {et}</label>' for et in edge_types)}
+        {edge_filters_html}
       </div>
       <div id="graph-container"></div>
 
@@ -87,30 +90,30 @@ def generate_interactive_html(dot_string, node_types, edge_types):
         const graphviz = d3.select("#graph-container").graphviz();
 
         function renderGraph() {{
-          const nodeFilters = Array.from(document.querySelectorAll(".node-filter:checked")).map(el => el.value);
-          const edgeFilters = Array.from(document.querySelectorAll(".edge-filter:checked")).map(el => el.value);
+          const nodeFilters = Array.from(document.querySelectorAll('.node-filter:checked')).map(el => el.value);
+          const edgeFilters = Array.from(document.querySelectorAll('.edge-filter:checked')).map(el => el.value);
 
-          const filteredDot = dotString.split("\n").filter(line => {{
-            if (line.includes("->")) {{
-              const match = line.match(/type=\"(.*?)\"/);
+          const filteredDot = dotString.split('\n').filter(line => {{
+            if (line.includes('->')) {{
+              const match = line.match(/type="(.*?)"/);
               if (match) {{
                 return edgeFilters.includes(match[1]);
               }}
               return true;
-            }} else if (line.includes("shape")) {{
-                const match = line.match(/type=\"(.*?)\"/);
+            }} else if (line.includes('shape')) {{
+                const match = line.match(/type="(.*?)"/);
                 if(match){{
                     return nodeFilters.includes(match[1]);
                 }}
                 return true;
             }}
             return true;
-          }}).join("\n");
+          }}).join('\n');
 
           graphviz.renderDot(filteredDot);
         }}
 
-        d3.selectAll(".node-filter, .edge-filter").on("change", renderGraph);
+        d3.selectAll('.node-filter, .edge-filter').on('change', renderGraph);
 
         renderGraph();
       </script>
@@ -425,7 +428,7 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
                 )
                 solution = response["model_answer"]
             else:
