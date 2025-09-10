@@ -45,18 +45,6 @@ def load_graph_data(uploaded_files):
     code_graph = graph_builder.build_graph(all_parsed_data)
     return code_graph
 
-def filter_graph(graph, ignored_node_types, ignored_edge_types):
-    filtered_graph = graph.copy()
-    for node, data in list(filtered_graph.nodes(data=True)):
-        if data.get("type") in ignored_node_types:
-            filtered_graph.remove_node(node)
-    
-    for u, v, data in list(filtered_graph.edges(data=True)):
-        if data.get("type") in ignored_edge_types:
-            filtered_graph.remove_edge(u, v)
-
-    return filtered_graph
-
 def convert_dot_to_markmap_json(dot_string):
     nodes = {}
     edges = []
@@ -153,25 +141,28 @@ def main():
                     st.session_state.code_contents[uploaded_file.name] = "This file is not a UTF-8 encoded text file."
 
         st.sidebar.header("Graph Options")
-        ignored_node_types = []
-        ignored_edge_types = []
-        if st.sidebar.checkbox("Ignore Variables"):
-            ignored_node_types.append("variable")
-        if st.sidebar.checkbox("Ignore Imports"):
-            ignored_edge_types.append("IMPORTS")
-        if st.sidebar.checkbox("Ignore Functions"):
-            ignored_node_types.append("function")
-        if st.sidebar.checkbox("Ignore Classes"):
-            ignored_node_types.append("class")
+        
+        # Node filter options
+        st.sidebar.subheader("Filter Nodes")
+        node_types = ["module", "class", "function", "method", "variable"]
+        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {nt}s", True)]
+
+        # Edge filter options
+        st.sidebar.subheader("Filter Edges")
+        edge_types = ["IMPORTS", "CALLS", "CONTAINS", "INHERITS"]
+        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {et} edges", True)]
+
+        # Clustering option
+        st.sidebar.subheader("Layout Options")
+        cluster_modules = st.sidebar.checkbox("Cluster Modules", False)
 
         code_graph = load_graph_data(uploaded_files_main)
-        filtered_graph = filter_graph(code_graph, ignored_node_types, ignored_edge_types)
 
-        query_engine = QueryEngine(filtered_graph)
+        query_engine = QueryEngine(code_graph)
         dot_generator = DotGenerator()
 
         st.header("Code Graph Visualization")
-        dot_string = dot_generator.generate_dot(filtered_graph)
+        dot_string = dot_generator.generate_dot(code_graph, node_filter=selected_node_types, edge_filter=selected_edge_types, cluster_modules=cluster_modules)
         st.graphviz_chart(dot_string)
         
         st.download_button(
@@ -373,8 +364,7 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet from the file `{os.path.basename(found_file_path)}`:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
-                )
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution.")
                 solution = response["model_answer"]
             else:
                 solution = "The file mentioned in the traceback was not found in the uploaded codebase."
