@@ -31,9 +31,9 @@ class DotGenerator:
 
         docstring = node_data.get("docstring")
         if docstring and docstring.strip():
-            label += f"\n({docstring.strip().splitlines()[0]})"
+            label += f"\n({docstring.strip().splitlines()[0]})")
 
-        self.dot_string += f'  "{node_id}" [label="{label}", shape={shape}, style={style}, fillcolor="{fillcolor}"];\n'
+        self.dot_string += f'  "{node_id}" [label="{label}", shape={shape}, style={style}, fillcolor="{fillcolor}", type="{node_type}"];\n'
 
     def _add_edge_to_dot(self, source_id, target_id, edge_data):
         edge_type = edge_data.get("type", "unknown")
@@ -58,7 +58,7 @@ class DotGenerator:
             color = "purple"
             style = "solid"
 
-        self.dot_string += f'  "{source_id}" -> "{target_id}" [label="{label}", color="{color}", style={style}];\n'
+        self.dot_string += f'  "{source_id}" -> "{target_id}" [label="{label}", color="{color}", style={style}, type="{edge_type}"];\n'
 
     def _add_clustered_nodes_to_dot(self, graph: nx.DiGraph):
         modules = defaultdict(list)
