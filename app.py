@@ -84,17 +84,17 @@ def generate_interactive_html(dot_string, node_types, edge_types):
         const graphviz = d3.select("#graph-container").graphviz();
 
         function renderGraph() {{
-          const nodeFilters = Array.from(document.querySelectorAll('.node-filter:checked')).map(el => el.value);
-          const edgeFilters = Array.from(document.querySelectorAll('.edge-filter:checked')).map(el => el.value);
+          const nodeFilters = Array.from(document.querySelectorAll(".node-filter:checked")).map(el => el.value);
+          const edgeFilters = Array.from(document.querySelectorAll(".edge-filter:checked")).map(el => el.value);
 
-          const filteredDot = dotString.split('\n').filter(line => {{
-            if (line.includes('->')) {{
+          const filteredDot = dotString.split("\n").filter(line => {{
+            if (line.includes("->")) {{
               const match = line.match(/label=\"(.*?)\"/);
               if (match) {{
                 return edgeFilters.includes(match[1]);
               }}
               return true;
-            }} else if (line.includes('shape')) {{
+            }} else if (line.includes("shape")) {{
                 const match = line.match(/fillcolor=\"(.*?)\"/);
                 if(match){{
                     const color = match[1];
@@ -107,12 +107,12 @@ def generate_interactive_html(dot_string, node_types, edge_types):
                 return true;
             }}
             return true;
-          }}).join('\n');
+          }}).join("\n");
 
           graphviz.renderDot(filteredDot);
         }}
 
-        d3.selectAll('.node-filter, .edge-filter').on('change', renderGraph);
+        d3.selectAll(".node-filter, .edge-filter").on("change", renderGraph);
 
         renderGraph();
       </script>
@@ -121,7 +121,7 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     '''
 
 def convert_dot_to_markmap_json(dot_string):
-    nodes = {{}}
+    nodes = {}
     edges = []
 
     for line in dot_string.strip().split('\n'):
@@ -134,14 +134,14 @@ def convert_dot_to_markmap_json(dot_string):
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            edges.append({{"source": source, "target": target, "label": label}})
+            edges.append({"source": source, "target": target, "label": label})
         elif 'label=' in line:
             node_id, attrs = line.split('[')
             node_id = node_id.strip().replace('"', '')
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            nodes[node_id] = {{"id": node_id, "label": label, "children": []}}
+            nodes[node_id] = {"id": node_id, "label": label, "children": []}
 
     for edge in edges:
         source_node = nodes.get(edge["source"])
@@ -159,13 +159,13 @@ def convert_dot_to_markmap_json(dot_string):
             return None
         visited.add(node['id'])
         children = [build_markmap_tree(child, visited.copy()) for child in node["children"]]
-        return {{
+        return {
             "content": node["label"],
             "children": [child for child in children if child is not None]
-        }}
+        }
 
     markmap_children = [build_markmap_tree(root, set()) for root in root_nodes]
-    return json.dumps({{"content": "Code Graph", "children": markmap_children}})
+    return json.dumps({"content": "Code Graph", "children": markmap_children})
 
 def main():
     st.title("Code Visualizer and Query Engine")
@@ -197,15 +197,15 @@ def main():
     if uploaded_files_main:
         # Initialize session state variables
         if "code_contents" not in st.session_state:
-            st.session_state.code_contents = {{}}
+            st.session_state.code_contents = {}
         if "optimized_code" not in st.session_state:
-            st.session_state.optimized_code = {{}}
+            st.session_state.optimized_code = {}
         if "commented_code" not in st.session_state:
-            st.session_state.commented_code = {{}}
+            st.session_state.commented_code = {}
         if "show_diff_opt" not in st.session_state:
-            st.session_state.show_diff_opt = {{}}
+            st.session_state.show_diff_opt = {}
         if "show_diff_comment" not in st.session_state:
-            st.session_state.show_diff_comment = {{}}
+            st.session_state.show_diff_comment = {}
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -287,7 +287,7 @@ def main():
         if st.button("Click to Analyze the Code"):
             with st.spinner("Analyzing code for optimizations..."):
                 client = HorizonLLMClient()
-                st.session_state.optimized_code = {{}}
+                st.session_state.optimized_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     response = client.get_chat_response(
                         user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
@@ -312,7 +312,7 @@ def main():
 
             if st.button("Apply Optimizations"):
                 st.session_state.code_contents.update(st.session_state.optimized_code)
-                st.session_state.optimized_code = {{}}
+                st.session_state.optimized_code = {}
                 st.rerun()
 
         # --- Commenting Section ---
@@ -320,7 +320,7 @@ def main():
         if st.button("Generate Comments"):
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.commented_code = {{}}
+                st.session_state.commented_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     if not file_name.endswith(".py"):
                         continue
@@ -370,7 +370,7 @@ def main():
 
             if st.button("Apply Comments"):
                 st.session_state.code_contents.update(st.session_state.commented_code)
-                st.session_state.commented_code = {{}}
+                st.session_state.commented_code = {}
                 st.rerun()
 
         # --- Download Section ---
@@ -440,8 +440,7 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
-                )
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet:\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution.")
                 solution = response["model_answer"]
             else:
                 solution = "The file mentioned in the traceback was not found in the uploaded codebase."
