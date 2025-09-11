@@ -122,7 +122,7 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     '''
 
 def convert_dot_to_markmap_json(dot_string):
-    nodes = {{}}
+    nodes = {}
     edges = []
 
     for line in dot_string.strip().split('\n'):
@@ -135,14 +135,14 @@ def convert_dot_to_markmap_json(dot_string):
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            edges.append({{"source": source, "target": target, "label": label}})
+            edges.append({"source": source, "target": target, "label": label})
         elif 'label=' in line:
             node_id, attrs = line.split('[')
             node_id = node_id.strip().replace('"', '')
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            nodes[node_id] = {{"id": node_id, "label": label, "children": []}}
+            nodes[node_id] = {"id": node_id, "label": label, "children": []}
 
     for edge in edges:
         source_node = nodes.get(edge["source"])
@@ -160,13 +160,13 @@ def convert_dot_to_markmap_json(dot_string):
             return None
         visited.add(node['id'])
         children = [build_markmap_tree(child, visited.copy()) for child in node["children"]]
-        return {{
+        return {
             "content": node["label"],
             "children": [child for child in children if child is not None]
-        }}
+        }
 
     markmap_children = [build_markmap_tree(root, set()) for root in root_nodes]
-    return json.dumps({{"content": "Code Graph", "children": markmap_children}})
+    return json.dumps({"content": "Code Graph", "children": markmap_children})
 
 def main():
     st.title("Code Visualizer and Query Engine")
@@ -198,15 +198,15 @@ def main():
     if uploaded_files_main:
         # Initialize session state variables
         if "code_contents" not in st.session_state:
-            st.session_state.code_contents = {{}}
+            st.session_state.code_contents = {}
         if "optimized_code" not in st.session_state:
-            st.session_state.optimized_code = {{}}
+            st.session_state.optimized_code = {}
         if "commented_code" not in st.session_state:
-            st.session_state.commented_code = {{}}
+            st.session_state.commented_code = {}
         if "show_diff_opt" not in st.session_state:
-            st.session_state.show_diff_opt = {{}}
+            st.session_state.show_diff_opt = {}
         if "show_diff_comment" not in st.session_state:
-            st.session_state.show_diff_comment = {{}}
+            st.session_state.show_diff_comment = {}
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -221,13 +221,18 @@ def main():
         # Node filter options
         st.sidebar.subheader("Filter Nodes")
         node_types = ["module", "class", "function", "method", "variable"]
-        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {{nt}}s", True)]
+        selected_node_types = [
+            nt for nt in node_types 
+            if st.sidebar.checkbox(f"Show {nt}s", True, key=f"node_{nt}")
+        ]
 
         # Edge filter options
         st.sidebar.subheader("Filter Edges")
         edge_types = ["IMPORTS", "CALLS", "CONTAINS", "INHERITS"]
-        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {{et}} edges", True)]
-
+        selected_edge_types = [
+            et for et in edge_types 
+            if st.sidebar.checkbox(f"Show {et} edges", True, key=f"edge_{et}")
+        ]
         # Clustering option
         st.sidebar.subheader("Layout Options")
         cluster_modules = st.sidebar.checkbox("Cluster Modules", False)
@@ -321,7 +326,7 @@ def main():
         if st.button("Generate Comments"):
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.commented_code = {{}}
+                st.session_state.commented_code = {}
                 all_generated_docstrings = []
 
                 class DocstringAdder(ast.NodeTransformer):
@@ -335,7 +340,7 @@ def main():
                             user_msg=f"Explain what the following Python function does:\n\n```python\n{{function_code}}\n```")
                         comment = response["model_answer"]
                         
-                        self.generated_docstrings.append({{"function": node.name, "docstring": comment}})
+                        self.generated_docstrings.append({"function": node.name, "docstring": comment})
 
                         docstring = ast.Expr(value=ast.Constant(value=comment))
                         
@@ -356,7 +361,7 @@ def main():
                     try:
                         tree = ast.parse(original_code)
                     except SyntaxError:
-                        st.warning(f"Could not parse {{file_name}}. Skipping.")
+                        st.warning(f"Could not parse {file_name}. Skipping.")
                         continue
                     
                     adder = DocstringAdder()
@@ -410,9 +415,9 @@ document.addEventListener('DOMContentLoaded', () => {{
         if st.session_state.commented_code:
             for file_name, commented_code in st.session_state.commented_code.items():
                 st.subheader(f"Proposed changes for {{file_name}}:")
-                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_comment_{{file_name}}")
-                st.text_area("Code with Comments", commented_code, height=300, key=f"commented_{{file_name}}")
-                if st.button(f"Show Diff for {{file_name}}", key=f"comment_{{file_name}}"):
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_comment_{file_name}")
+                st.text_area("Code with Comments", commented_code, height=300, key=f"commented_{file_name}")
+                if st.button(f"Show Diff for {{file_name}}", key=f"comment_{file_name}"):
                     st.session_state.show_diff_comment[file_name] = not st.session_state.show_diff_comment.get(file_name, False)
 
                 if st.session_state.show_diff_comment.get(file_name, False):
@@ -422,7 +427,7 @@ document.addEventListener('DOMContentLoaded', () => {{
 
             if st.button("Apply Comments"):
                 st.session_state.code_contents.update(st.session_state.commented_code)
-                st.session_state.commented_code = {{}}
+                st.session_state.commented_code = {}
                 st.rerun()
 
         # --- Download Section ---
