@@ -188,8 +188,8 @@ def main():
 
                 problem, solution = analyze_log_file(log_contents, tmpdir)
                 st.header("Log Analysis Results")
-                st.error(f"Problem: {{problem}}")
-                st.success(f"Solution: {{solution}}")
+                st.error(f"Problem: {problem}")
+                st.success(f"Solution: {solution}")
 
     # --- Code Visualization and other features ---
     st.header("Code Visualization and Analysis")
@@ -221,18 +221,13 @@ def main():
         # Node filter options
         st.sidebar.subheader("Filter Nodes")
         node_types = ["module", "class", "function", "method", "variable"]
-        selected_node_types = [
-            nt for nt in node_types 
-            if st.sidebar.checkbox(f"Show {nt}s", True, key=f"node_{nt}")
-        ]
+        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {nt}s", True)]
 
         # Edge filter options
         st.sidebar.subheader("Filter Edges")
         edge_types = ["IMPORTS", "CALLS", "CONTAINS", "INHERITS"]
-        selected_edge_types = [
-            et for et in edge_types 
-            if st.sidebar.checkbox(f"Show {et} edges", True, key=f"edge_{et}")
-        ]
+        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {et} edges", True)]
+
         # Clustering option
         st.sidebar.subheader("Layout Options")
         cluster_modules = st.sidebar.checkbox("Cluster Modules", False)
@@ -267,7 +262,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
           <script>
-            const data = JSON.parse(`{{markmap_json}}`);
+            const data = JSON.parse(`{markmap_json}`);
             ((getMarkmap, getOptions, root, jsonOptions) => {{
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
@@ -293,10 +288,10 @@ def main():
         if st.button("Click to Analyze the Code"):
             with st.spinner("Analyzing code for optimizations..."):
                 client = HorizonLLMClient()
-                st.session_state.optimized_code = {{}}
+                st.session_state.optimized_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     response = client.get_chat_response(
-                        user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{{original_code}}\n```")
+                        user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
                     full_text = response["model_answer"]
 
                     match = re.search(r"```python\n(.*?)\n```", full_text, re.DOTALL)
@@ -305,10 +300,10 @@ def main():
 
         if st.session_state.optimized_code:
             for file_name, optimized_code in st.session_state.optimized_code.items():
-                st.subheader(f"Optimized Code for {{file_name}}:")
-                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_opt_{{file_name}}")
-                st.text_area("Optimized Code", optimized_code, height=300, key=f"optimized_{{file_name}}")
-                if st.button(f"Show Diff for {{file_name}}", key=f"opt_{{file_name}}"):
+                st.subheader(f"Optimized Code for {file_name}:")
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_opt_{file_name}")
+                st.text_area("Optimized Code", optimized_code, height=300, key=f"optimized_{file_name}")
+                if st.button(f"Show Diff for {file_name}", key=f"opt_{file_name}"):
                     st.session_state.show_diff_opt[file_name] = not st.session_state.show_diff_opt.get(file_name, False)
                 
                 if st.session_state.show_diff_opt.get(file_name, False):
@@ -318,7 +313,7 @@ def main():
 
             if st.button("Apply Optimizations"):
                 st.session_state.code_contents.update(st.session_state.optimized_code)
-                st.session_state.optimized_code = {{}}
+                st.session_state.optimized_code = {}
                 st.rerun()
 
         # --- Commenting Section ---
@@ -337,7 +332,7 @@ def main():
                         function_code = ast.get_source_segment(original_code, node)
                         
                         response = client.get_chat_response(
-                            user_msg=f"Explain what the following Python function does:\n\n```python\n{{function_code}}\n```")
+                            user_msg=f"Explain what the following Python function does:\n\n```python\n{function_code}\n```")
                         comment = response["model_answer"]
                         
                         self.generated_docstrings.append({"function": node.name, "docstring": comment})
@@ -384,7 +379,7 @@ def main():
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {{
-  const docstrings = {{json.dumps(all_generated_docstrings)}};
+  const docstrings = {json.dumps(all_generated_docstrings)};
   const container = document.getElementById('markmap-container');
   const {{ Markmap, transform }} = window.markmap;
 
@@ -392,14 +387,14 @@ document.addEventListener('DOMContentLoaded', () => {{
     const div = document.createElement('div');
     div.innerHTML = `<h2>${{item.function}}</h2>`;
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.id = `mindmap-${{index}}`;
+    svg.id = `mindmap-${index}`;
     svg.style.width = "100%";
     svg.style.height = "400px";
     div.appendChild(svg);
     container.appendChild(div);
 
     const data = transform(item.docstring);
-    Markmap.create(`svg#mindmap-${{index}}`, null, data);
+    Markmap.create(`svg#mindmap-${index}`, null, data);
   }});
 }});
 </script>
@@ -414,10 +409,10 @@ document.addEventListener('DOMContentLoaded', () => {{
 
         if st.session_state.commented_code:
             for file_name, commented_code in st.session_state.commented_code.items():
-                st.subheader(f"Proposed changes for {{file_name}}:")
+                st.subheader(f"Proposed changes for {file_name}:")
                 st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_comment_{file_name}")
                 st.text_area("Code with Comments", commented_code, height=300, key=f"commented_{file_name}")
-                if st.button(f"Show Diff for {{file_name}}", key=f"comment_{file_name}"):
+                if st.button(f"Show Diff for {file_name}", key=f"comment_{file_name}"):
                     st.session_state.show_diff_comment[file_name] = not st.session_state.show_diff_comment.get(file_name, False)
 
                 if st.session_state.show_diff_comment.get(file_name, False):
@@ -466,27 +461,14 @@ def analyze_log_file(log_contents, codebase_path):
         line_number_match = re.search(r'line (\d+)', problem, re.IGNORECASE)
 
         if file_path_match and line_number_match:
-            file_path_from_traceback = file_path_match.group(1)
+            file_path = file_path_match.group(1)
             line_number = int(line_number_match.group(1))
             
-            # Find the file in the uploaded codebase
-            found_file_path = None
-            for root, dirs, files in os.walk(codebase_path):
-                if os.path.basename(file_path_from_traceback) in files:
-                    # A simple heuristic: if the end of the path matches, it's likely the correct file
-                    if root.endswith(os.path.dirname(file_path_from_traceback)):
-                        found_file_path = os.path.join(root, os.path.basename(file_path_from_traceback))
-                        break
-            
-            # If not found with the heuristic, just take the first match
-            if not found_file_path:
-                for root, dirs, files in os.walk(codebase_path):
-                    if os.path.basename(file_path_from_traceback) in files:
-                        found_file_path = os.path.join(root, os.path.basename(file_path_from_traceback))
-                        break
+            # Construct the full path to the file
+            full_file_path = os.path.join(codebase_path, file_path)
 
-            if found_file_path and os.path.exists(found_file_path):
-                with open(found_file_path, 'r') as f:
+            if os.path.exists(full_file_path):
+                with open(full_file_path, 'r') as f:
                     code_lines = f.readlines()
                 
                 # Extract the relevant code snippet
@@ -497,7 +479,7 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{{problem}}\n```\n\nThe error occurred in the following code snippet\n\n```python\n{{code_snippet}}\n```\n\nPlease explain the error and suggest a solution.")
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution.")
                 solution = response["model_answer"]
             else:
                 solution = "The file mentioned in the traceback was not found in the uploaded codebase."
