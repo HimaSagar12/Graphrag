@@ -122,7 +122,7 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     '''
 
 def convert_dot_to_markmap_json(dot_string):
-    nodes = {}
+    nodes = {{}}
     edges = []
 
     for line in dot_string.strip().split('\n'):
@@ -142,7 +142,7 @@ def convert_dot_to_markmap_json(dot_string):
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            nodes[node_id] = {"id": node_id, "label": label, "children": []}
+            nodes[node_id] = {{"id": node_id, "label": label, "children": []}}
 
     for edge in edges:
         source_node = nodes.get(edge["source"])
@@ -188,8 +188,8 @@ def main():
 
                 problem, solution = analyze_log_file(log_contents, tmpdir)
                 st.header("Log Analysis Results")
-                st.error(f"Problem: {problem}")
-                st.success(f"Solution: {solution}")
+                st.error(f"Problem: {{problem}}")
+                st.success(f"Solution: {{solution}}")
 
     # --- Code Visualization and other features ---
     st.header("Code Visualization and Analysis")
@@ -198,15 +198,15 @@ def main():
     if uploaded_files_main:
         # Initialize session state variables
         if "code_contents" not in st.session_state:
-            st.session_state.code_contents = {}
+            st.session_state.code_contents = {{}}
         if "optimized_code" not in st.session_state:
-            st.session_state.optimized_code = {}
+            st.session_state.optimized_code = {{}}
         if "commented_code" not in st.session_state:
-            st.session_state.commented_code = {}
+            st.session_state.commented_code = {{}}
         if "show_diff_opt" not in st.session_state:
-            st.session_state.show_diff_opt = {}
+            st.session_state.show_diff_opt = {{}}
         if "show_diff_comment" not in st.session_state:
-            st.session_state.show_diff_comment = {}
+            st.session_state.show_diff_comment = {{}}
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -221,12 +221,12 @@ def main():
         # Node filter options
         st.sidebar.subheader("Filter Nodes")
         node_types = ["module", "class", "function", "method", "variable"]
-        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {nt}s", True)]
+        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {{nt}}s", True)]
 
         # Edge filter options
         st.sidebar.subheader("Filter Edges")
         edge_types = ["IMPORTS", "CALLS", "CONTAINS", "INHERITS"]
-        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {et} edges", True)]
+        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {{et}} edges", True)]
 
         # Clustering option
         st.sidebar.subheader("Layout Options")
@@ -379,7 +379,7 @@ def main():
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {{
-  const docstrings = {json.dumps(all_generated_docstrings)};
+  const docstrings = {{json.dumps(all_generated_docstrings)}};
   const container = document.getElementById('markmap-container');
   const {{ Markmap, transform }} = window.markmap;
 
