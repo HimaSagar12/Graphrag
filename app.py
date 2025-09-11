@@ -338,6 +338,27 @@ def main():
                             response = client.get_chat_response(
                                 user_msg=f"Explain what the following Python function does:\n\n```python\n{function_code}\n```")
                             comment = response["model_answer"]
+
+                            # Generate markmap HTML
+                            markmap_html = f'''<!DOCTYPE html>
+<html>
+<head>
+  <title>Markmap for {node.name}</title>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
+</head>
+<body>
+  <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
+  <script>
+    const markdown = {json.dumps(comment)};
+    const {{ Markmap, transform }} = window.markmap;
+    const data = transform(markdown);
+    Markmap.create("svg#mindmap", null, data);
+  </script>
+</body>
+</html>'''
+                            with open(f"{node.name}_doc_markmap.html", "w", encoding="utf-8") as f:
+                                f.write(markmap_html)
                             
                             docstring = ast.Expr(value=ast.Constant(value=comment))
                             
