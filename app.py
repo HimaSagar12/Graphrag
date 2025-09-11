@@ -142,7 +142,7 @@ def convert_dot_to_markmap_json(dot_string):
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            nodes[node_id] = {{"id": node_id, "label": label, "children": []}}
+            nodes[node_id] = {"id": node_id, "label": label, "children": []}
 
     for edge in edges:
         source_node = nodes.get(edge["source"])
