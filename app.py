@@ -188,8 +188,8 @@ def main():
 
                 problem, solution = analyze_log_file(log_contents, tmpdir)
                 st.header("Log Analysis Results")
-                st.error(f"Problem: {{problem}}")
-                st.success(f"Solution: {{solution}}")
+                st.error(f"Problem: {problem}")
+                st.success(f"Solution: {solution}")
 
     # --- Code Visualization and other features ---
     st.header("Code Visualization and Analysis")
@@ -198,15 +198,15 @@ def main():
     if uploaded_files_main:
         # Initialize session state variables
         if "code_contents" not in st.session_state:
-            st.session_state.code_contents = {{}}
+            st.session_state.code_contents = {}
         if "optimized_code" not in st.session_state:
-            st.session_state.optimized_code = {{}}
+            st.session_state.optimized_code = {}
         if "commented_code" not in st.session_state:
-            st.session_state.commented_code = {{}}
+            st.session_state.commented_code = {}
         if "show_diff_opt" not in st.session_state:
-            st.session_state.show_diff_opt = {{}}
+            st.session_state.show_diff_opt = {}
         if "show_diff_comment" not in st.session_state:
-            st.session_state.show_diff_comment = {{}}
+            st.session_state.show_diff_comment = {}
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -221,12 +221,12 @@ def main():
         # Node filter options
         st.sidebar.subheader("Filter Nodes")
         node_types = ["module", "class", "function", "method", "variable"]
-        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {{nt}}s", True)]
+        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {nt}s", True)]
 
         # Edge filter options
         st.sidebar.subheader("Filter Edges")
         edge_types = ["IMPORTS", "CALLS", "CONTAINS", "INHERITS"]
-        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {{et}} edges", True)]
+        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {et} edges", True)]
 
         # Clustering option
         st.sidebar.subheader("Layout Options")
@@ -322,34 +322,6 @@ def main():
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
                 st.session_state.commented_code = {{}}
-                all_generated_docstrings = []
-
-                class DocstringAdder(ast.NodeTransformer):
-                    def __init__(self):
-                        self.generated_docstrings = []
-
-                    def visit_FunctionDef(self, node):
-                        function_code = ast.get_source_segment(original_code, node)
-                        
-                        response = client.get_chat_response(
-                            user_msg=f"Explain what the following Python function does:\n\n```python\n{{function_code}}\n```")
-                        comment = response["model_answer"]
-                        
-                        self.generated_docstrings.append({{"function": node.name, "docstring": comment}})
-
-                        docstring = ast.Expr(value=ast.Constant(value=comment))
-                        
-                        if (
-                            node.body
-                            and isinstance(node.body[0], ast.Expr)
-                            and isinstance(node.body[0].value, ast.Constant)
-                        ):
-                            node.body[0] = docstring
-                        else:
-                            node.body.insert(0, docstring)
-                        
-                        return node
-
                 for file_name, original_code in st.session_state.code_contents.items():
                     if not file_name.endswith(".py"):
                         continue
@@ -359,53 +331,30 @@ def main():
                         st.warning(f"Could not parse {{file_name}}. Skipping.")
                         continue
                     
-                    adder = DocstringAdder()
-                    new_tree = adder.visit(tree)
-                    all_generated_docstrings.extend(adder.generated_docstrings)
+                    class DocstringAdder(ast.NodeTransformer):
+                        def visit_FunctionDef(self, node):
+                            function_code = ast.get_source_segment(original_code, node)
+                            
+                            response = client.get_chat_response(
+                                user_msg=f"Explain what the following Python function does:\n\n```python\n{{function_code}}\n```")
+                            comment = response["model_answer"]
+                            
+                            docstring = ast.Expr(value=ast.Constant(value=comment))
+                            
+                            if (
+                                node.body
+                                and isinstance(node.body[0], ast.Expr)
+                                and isinstance(node.body[0].value, ast.Constant)
+                            ):
+                                node.body[0] = docstring
+                            else:
+                                node.body.insert(0, docstring)
+                            
+                            return node
+
+                    new_tree = DocstringAdder().visit(tree)
                     modified_code = ast.unparse(new_tree)
                     st.session_state.commented_code[file_name] = modified_code
-
-                if all_generated_docstrings:
-                    markmap_html = '''<!DOCTYPE html>
-<html>
-<head>
-<title>Markmap of Generated Docstrings</title>
-<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
-</head>
-<body>
-<h1>Generated Docstrings</h1>
-<div id="markmap-container"></div>
-
-<script>
-document.addEventListener('DOMContentLoaded', () => {{
-  const docstrings = ''' + json.dumps(all_generated_docstrings) + ''';
-  const container = document.getElementById('markmap-container');
-  const {{ Markmap, transform }} = window.markmap;
-
-  docstrings.forEach((item, index) => {{
-    const div = document.createElement('div');
-    div.innerHTML = `<h2>${{item.function}}</h2>`;
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.id = `mindmap-${{index}}`;
-    svg.style.width = "100%";
-    svg.style.height = "400px";
-    div.appendChild(svg);
-    container.appendChild(div);
-
-    const data = transform(item.docstring);
-    Markmap.create(`svg#mindmap-${{index}}`, null, data);
-  }});
-}});
-</script>
-</body>
-</html>'''
-                    st.download_button(
-                        label="Download Docstring Markmaps",
-                        data=markmap_html,
-                        file_name="docstring_markmaps.html",
-                        mime="text/html",
-                    )
 
         if st.session_state.commented_code:
             for file_name, commented_code in st.session_state.commented_code.items():
