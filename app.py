@@ -122,7 +122,7 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     '''
 
 def convert_dot_to_markmap_json(dot_string):
-    nodes = {{}}
+    nodes = {}
     edges = []
 
     for line in dot_string.strip().split('\n'):
