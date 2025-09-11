@@ -188,8 +188,8 @@ def main():
 
                 problem, solution = analyze_log_file(log_contents, tmpdir)
                 st.header("Log Analysis Results")
-                st.error(f"Problem: {problem}")
-                st.success(f"Solution: {solution}")
+                st.error(f"Problem: {{problem}}")
+                st.success(f"Solution: {{solution}}")
 
     # --- Code Visualization and other features ---
     st.header("Code Visualization and Analysis")
@@ -198,15 +198,15 @@ def main():
     if uploaded_files_main:
         # Initialize session state variables
         if "code_contents" not in st.session_state:
-            st.session_state.code_contents = {}
+            st.session_state.code_contents = {{}}
         if "optimized_code" not in st.session_state:
-            st.session_state.optimized_code = {}
+            st.session_state.optimized_code = {{}}
         if "commented_code" not in st.session_state:
-            st.session_state.commented_code = {}
+            st.session_state.commented_code = {{}}
         if "show_diff_opt" not in st.session_state:
-            st.session_state.show_diff_opt = {}
+            st.session_state.show_diff_opt = {{}}
         if "show_diff_comment" not in st.session_state:
-            st.session_state.show_diff_comment = {}
+            st.session_state.show_diff_comment = {{}}
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -221,12 +221,12 @@ def main():
         # Node filter options
         st.sidebar.subheader("Filter Nodes")
         node_types = ["module", "class", "function", "method", "variable"]
-        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {nt}s", True)]
+        selected_node_types = [nt for nt in node_types if st.sidebar.checkbox(f"Show {{nt}}s", True)]
 
         # Edge filter options
         st.sidebar.subheader("Filter Edges")
         edge_types = ["IMPORTS", "CALLS", "CONTAINS", "INHERITS"]
-        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {et} edges", True)]
+        selected_edge_types = [et for et in edge_types if st.sidebar.checkbox(f"Show {{et}} edges", True)]
 
         # Clustering option
         st.sidebar.subheader("Layout Options")
