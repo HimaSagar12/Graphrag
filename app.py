@@ -410,6 +410,35 @@ def main():
                 st.session_state.commented_code = {}
                 st.rerun()
 
+        if st.button("Generate Markmap from comment.md"):
+            with open("comment.md", "r") as f:
+                comment_md = f.read()
+            markmap_html = f'''
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Markmap</title>
+              <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+              <script src="https://cdn.jsdelivr.net/npm/markmap-view@0.18.12/dist/browser/index.js"></script>
+            </head>
+            <body>
+              <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
+              <script>
+                const data = `{comment_md}`;
+                ((getMarkmap, getOptions, root, jsonOptions) => {{
+                  const markmap = getMarkmap();
+                  window.mm = markmap.Markmap.create(
+                    "svg#mindmap",
+                    (getOptions || markmap.deriveOptions)(jsonOptions),
+                    data
+                  );
+                }})();
+              </script>
+            </body>
+            </html>
+            '''
+            components.html(markmap_html, height=600)
+
         # --- Display Generated Comments ---
         if "generated_comments" in st.session_state and st.session_state.generated_comments:
             st.header("Generated Comments")
