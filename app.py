@@ -95,13 +95,13 @@ def generate_interactive_html(dot_string, node_types, edge_types):
 
           const filteredDot = dotString.split('\n').filter(line => {{
             if (line.includes('->')) {{
-              const match = line.match(/type=\"(.*?)\"/);
+              const match = line.match(/type="(.*?)"/);
               if (match) {{
                 return edgeFilters.includes(match[1]);
               }}
               return true;
             }} else if (line.includes('shape')) {{
-                const match = line.match(/type=\"(.*?)\"/);
+                const match = line.match(/type="(.*?)"/);
                 if(match){{
                     return nodeFilters.includes(match[1]);
                 }}
@@ -122,7 +122,7 @@ def generate_interactive_html(dot_string, node_types, edge_types):
     '''
 
 def convert_dot_to_markmap_json(dot_string):
-    nodes = {{}}
+    nodes = {}
     edges = []
 
     for line in dot_string.strip().split('\n'):
@@ -135,14 +135,14 @@ def convert_dot_to_markmap_json(dot_string):
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            edges.append({{"source": source, "target": target, "label": label}})
+            edges.append({"source": source, "target": target, "label": label})
         elif 'label=' in line:
             node_id, attrs = line.split('[')
             node_id = node_id.strip().replace('"', '')
             label = ''
             if 'label=' in attrs:
                 label = attrs.split('label=')[-1].split(',')[0].replace('"', '')
-            nodes[node_id] = {{"id": node_id, "label": label, "children": []}}
+            nodes[node_id] = {"id": node_id, "label": label, "children": []}
 
     for edge in edges:
         source_node = nodes.get(edge["source"])
@@ -160,13 +160,13 @@ def convert_dot_to_markmap_json(dot_string):
             return None
         visited.add(node['id'])
         children = [build_markmap_tree(child, visited.copy()) for child in node["children"]]
-        return {{
+        return {
             "content": node["label"],
             "children": [child for child in children if child is not None]
-        }}
+        }
 
     markmap_children = [build_markmap_tree(root, set()) for root in root_nodes]
-    return json.dumps({{"content": "Code Graph", "children": markmap_children}})
+    return json.dumps({"content": "Code Graph", "children": markmap_children})
 
 def main():
     st.title("Code Visualizer and Query Engine")
@@ -262,7 +262,7 @@ def main():
         <body>
           <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
           <script>
-            const data = JSON.parse(`{{markmap_json}}`);
+            const data = JSON.parse(`{markmap_json}`);
             ((getMarkmap, getOptions, root, jsonOptions) => {{
               const markmap = getMarkmap();
               window.mm = markmap.Markmap.create(
@@ -288,10 +288,10 @@ def main():
         if st.button("Click to Analyze the Code"):
             with st.spinner("Analyzing code for optimizations..."):
                 client = HorizonLLMClient()
-                st.session_state.optimized_code = {{}}
+                st.session_state.optimized_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     response = client.get_chat_response(
-                        user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{{original_code}}\n```")
+                        user_msg=f"Please analyze the following Python code and suggest optimizations such as parallel computing, reducing time or space complexity:\n\n```python\n{original_code}\n```")
                     full_text = response["model_answer"]
 
                     match = re.search(r"```python\n(.*?)\n```", full_text, re.DOTALL)
@@ -300,10 +300,10 @@ def main():
 
         if st.session_state.optimized_code:
             for file_name, optimized_code in st.session_state.optimized_code.items():
-                st.subheader(f"Optimized Code for {{file_name}}:")
-                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_opt_{{file_name}}")
-                st.text_area("Optimized Code", optimized_code, height=300, key=f"optimized_{{file_name}}")
-                if st.button(f"Show Diff for {{file_name}}", key=f"opt_{{file_name}}"):
+                st.subheader(f"Optimized Code for {file_name}:")
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_opt_{file_name}")
+                st.text_area("Optimized Code", optimized_code, height=300, key=f"optimized_{file_name}")
+                if st.button(f"Show Diff for {file_name}", key=f"opt_{file_name}"):
                     st.session_state.show_diff_opt[file_name] = not st.session_state.show_diff_opt.get(file_name, False)
                 
                 if st.session_state.show_diff_opt.get(file_name, False):
@@ -313,7 +313,7 @@ def main():
 
             if st.button("Apply Optimizations"):
                 st.session_state.code_contents.update(st.session_state.optimized_code)
-                st.session_state.optimized_code = {{}}
+                st.session_state.optimized_code = {}
                 st.rerun()
 
         # --- Commenting Section ---
@@ -321,25 +321,66 @@ def main():
         if st.button("Generate Comments"):
             with st.spinner("Generating comments..."):
                 client = HorizonLLMClient()
-                st.session_state.commented_code = {{}}
+                st.session_state.commented_code = {}
                 for file_name, original_code in st.session_state.code_contents.items():
                     if not file_name.endswith(".py"):
                         continue
                     try:
                         tree = ast.parse(original_code)
                     except SyntaxError:
-                        st.warning(f"Could not parse {{file_name}}. Skipping.")
+                        st.warning(f"Could not parse {file_name}. Skipping.")
                         continue
+
+                    with open("comment.md", "a") as f:
+                        f.write(f"\n # {file_name} \n")
                     
                     class DocstringAdder(ast.NodeTransformer):
                         def visit_FunctionDef(self, node):
                             function_code = ast.get_source_segment(original_code, node)
+                            print(file_name)
                             
                             response = client.get_chat_response(
-                                user_msg=f"Explain what the following Python function does:\n\n```python\n{{function_code}}\n```")
+                                # user_msg=f"Explain what the following Python function does and your explanation should be in markdown format. add sections :\n\n```python\n{function_code}\n```")
+                                user_msg = (
+                                    f"You are a technical documentation assistant. Please analyze the following Python function and generate a comprehensive explanation in **Markdown format**. "
+                                    "ensure that every new line you have generated must and should be a markdown line"
+                                    f"This is the Python code:\n\n```python\n{function_code}\n```\n\n"
+                                    f"that function code is from the {file_name} file"
+                                    "The explanation should be structured into the following sections for clarity and ease of documentation:\n\n"
+                                    "## write function name here\n\n"
+                                    "### Function Code\n"
+                                    f"```python\n{function_code}\n```\n\n"
+                                    "### Purpose\n"
+                                    "- Describe what the function is intended to do.\n\n"
+                                    "### Parameters\n"
+                                    "- List and explain each parameter, including type and role.\n\n"
+                                    "### Return Value\n"
+                                    "- Describe the return value, including type and meaning.\n\n"
+                                    "### Internal Logic\n"
+                                    "- Provide a step-by-step breakdown of how the function works.\n\n"
+                                    "### Edge Cases & Assumptions\n"
+                                    "- Mention any assumptions made and edge cases handled or not handled.\n\n"
+                                    "### Usage Example\n"
+                                    "- Include a sample usage of the function.\n\n"
+                                    "### Additional Notes\n"
+                                    "- Add any relevant insights, performance considerations, or limitations.\n\n"
+                                    "Ensure the entire response is in Markdown format and suitable for inclusion in technical documentation, but do **not** wrap the entire response in a Markdown code block."
+                                    "ensure that you write the name of the function before writing purpose of the function"
+                                ))
+
+
                             comment = response["model_answer"]
+
+                            
+                            with open("comment.md", "a") as file:
+                                file.write("\n" + comment + "\n")
+
                             
                             docstring = ast.Expr(value=ast.Constant(value=comment))
+
+                            with open("docstring.txt", "w") as file:
+                                file.write(str(docstring))
+
                             
                             if (
                                 node.body
@@ -358,10 +399,10 @@ def main():
 
         if st.session_state.commented_code:
             for file_name, commented_code in st.session_state.commented_code.items():
-                st.subheader(f"Proposed changes for {{file_name}}:")
-                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_comment_{{file_name}}")
-                st.text_area("Code with Comments", commented_code, height=300, key=f"commented_{{file_name}}")
-                if st.button(f"Show Diff for {{file_name}}", key=f"comment_{{file_name}}"):
+                st.subheader(f"Proposed changes for {file_name}:")
+                st.text_area("Original Code", st.session_state.code_contents[file_name], height=300, key=f"original_comment_{file_name}")
+                st.text_area("Code with Comments", commented_code, height=300, key=f"commented_{file_name}")
+                if st.button(f"Show Diff for {file_name}", key=f"comment_{file_name}"):
                     st.session_state.show_diff_comment[file_name] = not st.session_state.show_diff_comment.get(file_name, False)
 
                 if st.session_state.show_diff_comment.get(file_name, False):
@@ -371,7 +412,7 @@ def main():
 
             if st.button("Apply Comments"):
                 st.session_state.code_contents.update(st.session_state.commented_code)
-                st.session_state.commented_code = {{}}
+                st.session_state.commented_code = {}
                 st.rerun()
 
         # --- Download Section ---
@@ -410,14 +451,27 @@ def analyze_log_file(log_contents, codebase_path):
         line_number_match = re.search(r'line (\d+)', problem, re.IGNORECASE)
 
         if file_path_match and line_number_match:
-            file_path = file_path_match.group(1)
+            file_path_from_traceback = file_path_match.group(1)
             line_number = int(line_number_match.group(1))
             
-            # Construct the full path to the file
-            full_file_path = os.path.join(codebase_path, file_path)
+            # Find the file in the uploaded codebase
+            found_file_path = None
+            for root, dirs, files in os.walk(codebase_path):
+                if os.path.basename(file_path_from_traceback) in files:
+                    # A simple heuristic: if the end of the path matches, it's likely the correct file
+                    if root.endswith(os.path.dirname(file_path_from_traceback)):
+                        found_file_path = os.path.join(root, os.path.basename(file_path_from_traceback))
+                        break
+            
+            # If not found with the heuristic, just take the first match
+            if not found_file_path:
+                for root, dirs, files in os.walk(codebase_path):
+                    if os.path.basename(file_path_from_traceback) in files:
+                        found_file_path = os.path.join(root, os.path.basename(file_path_from_traceback))
+                        break
 
-            if os.path.exists(full_file_path):
-                with open(full_file_path, 'r') as f:
+            if found_file_path and os.path.exists(found_file_path):
+                with open(found_file_path, 'r') as f:
                     code_lines = f.readlines()
                 
                 # Extract the relevant code snippet
@@ -428,7 +482,8 @@ def analyze_log_file(log_contents, codebase_path):
                 # Use HorizonLLMClient for analysis
                 client = HorizonLLMClient()
                 response = client.get_chat_response(
-                    user_msg=f"The following traceback was found in a log file:\n\n```\n{{problem}}\n```\n\nThe error occurred in the following code snippet\n\n```python\n{{code_snippet}}\n```\n\nPlease explain the error and suggest a solution.")
+                    user_msg=f"The following traceback was found in a log file:\n\n```\n{problem}\n```\n\nThe error occurred in the following code snippet\n\n```python\n{code_snippet}\n```\n\nPlease explain the error and suggest a solution."
+                )
                 solution = response["model_answer"]
             else:
                 solution = "The file mentioned in the traceback was not found in the uploaded codebase."
