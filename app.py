@@ -424,7 +424,7 @@ def main():
             <body>
               <svg id="mindmap" style="width: 100%; height: 600px;"></svg>
               <script>
-                const data = `{comment_md}`;
+                const data = {json.dumps(comment_md)};
                 ((getMarkmap, getOptions, root, jsonOptions) => {{
                   const markmap = getMarkmap();
                   window.mm = markmap.Markmap.create(
@@ -439,12 +439,7 @@ def main():
             '''
             components.html(markmap_html, height=600)
 
-        # --- Display Generated Comments ---
-        if "generated_comments" in st.session_state and st.session_state.generated_comments:
-            st.header("Generated Comments")
-            for comment_data in st.session_state.generated_comments:
-                st.subheader(f"Comments for {comment_data['file_name']}")
-                st.markdown(comment_data['comment'])
+        
 
         # --- Download Section ---
         if st.session_state.optimized_code or st.session_state.commented_code:
