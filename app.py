@@ -207,6 +207,8 @@ def main():
             st.session_state.show_diff_opt = {}
         if "show_diff_comment" not in st.session_state:
             st.session_state.show_diff_comment = {}
+        if "generated_comments" not in st.session_state:
+            st.session_state.generated_comments = []
 
         if not st.session_state.code_contents:
             for uploaded_file in uploaded_files_main:
@@ -331,8 +333,7 @@ def main():
                         st.warning(f"Could not parse {file_name}. Skipping.")
                         continue
 
-                    with open("comment.md", "a") as f:
-                        f.write(f"\n # {file_name} \n")
+                    
                     
                     class DocstringAdder(ast.NodeTransformer):
                         def visit_FunctionDef(self, node):
@@ -370,16 +371,10 @@ def main():
 
 
                             comment = response["model_answer"]
-
-                            
-                            with open("comment.md", "a") as file:
-                                file.write("\n" + comment + "\n")
+                            st.session_state.generated_comments.append({"file_name": file_name, "comment": comment})
 
                             
                             docstring = ast.Expr(value=ast.Constant(value=comment))
-
-                            with open("docstring.txt", "w") as file:
-                                file.write(str(docstring))
 
                             
                             if (
@@ -414,6 +409,13 @@ def main():
                 st.session_state.code_contents.update(st.session_state.commented_code)
                 st.session_state.commented_code = {}
                 st.rerun()
+
+        # --- Display Generated Comments ---
+        if "generated_comments" in st.session_state and st.session_state.generated_comments:
+            st.header("Generated Comments")
+            for comment_data in st.session_state.generated_comments:
+                st.subheader(f"Comments for {comment_data['file_name']}")
+                st.markdown(comment_data['comment'])
 
         # --- Download Section ---
         if st.session_state.optimized_code or st.session_state.commented_code:
